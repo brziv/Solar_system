@@ -160,30 +160,122 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // Global variables
-        let scene, camera, renderer, controls;
-        let sun, planets = {}, moons = {};
-        let orbits = [];
-        let timeSpeed = 1;
-        let currentFocus = null;
-        let solarSystemGroup;
-        let galaxyTime = 0;
-        let loadedTextures = {};
-        let loadingManager;
+// Global variables
+    let scene, camera, renderer, controls;
+    let sun, planets = {}, moons = {};
+    let orbits = [];
+    let timeSpeed = 1;
+    let currentFocus = null;
+    let solarSystemGroup;
+    let galaxyTime = 0;
+    let loadedTextures = {};
+    let loadingManager;
+    let followingOffset = new THREE.Vector3(0, 10, 20);
+    let planetInfoPanel;
+    let focusToggleState = {};
+
+    // Camera movement variables
+    let keys = {
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+        space: false,
+        control: false
+    };
+    let cameraSpeed = 2;
+        // Real astronomical data for planet info
+    const realPlanetData = {
+        sun: { 
+            type: "G-type main-sequence star", 
+            temperature: "5,778 K", 
+            rotation: "25.05 days (equator)"
+        },
+        mercury: { 
+            orbitPeriod: "88 days", 
+            rotationPeriod: "58.6 days", 
+            distance: "0.39 AU"
+        },
+        venus: { 
+            orbitPeriod: "225 days", 
+            rotationPeriod: "243 days", 
+            distance: "0.72 AU"
+        },
+        earth: { 
+            orbitPeriod: "365.25 days", 
+            rotationPeriod: "1 day", 
+            distance: "1 AU"
+        },
+        mars: { 
+            orbitPeriod: "687 days", 
+            rotationPeriod: "1.03 days", 
+            distance: "1.52 AU"
+        },
+        jupiter: { 
+            orbitPeriod: "11.86 years", 
+            rotationPeriod: "9.93 hours", 
+            distance: "5.2 AU"
+        },
+        saturn: { 
+            orbitPeriod: "29.46 years", 
+            rotationPeriod: "10.7 hours", 
+            distance: "9.58 AU"
+        },
+        uranus: { 
+            orbitPeriod: "84.01 years", 
+            rotationPeriod: "17.24 hours", 
+            distance: "19.22 AU"
+        },
+        neptune: { 
+            orbitPeriod: "164.8 years", 
+            rotationPeriod: "16.1 hours", 
+            distance: "30.1 AU"
+        }
+    };
+
+    // Add the planet info panel
+    function createPlanetInfoPanel() {
+        planetInfoPanel = document.createElement('div');
+        planetInfoPanel.id = 'planet-info';
+        planetInfoPanel.style.position = 'absolute';
+        planetInfoPanel.style.top = '10px';
+        planetInfoPanel.style.right = '10px';
+        planetInfoPanel.style.background = 'rgba(0, 0, 0, 0.8)';
+        planetInfoPanel.style.color = 'white';
+        planetInfoPanel.style.padding = '15px';
+        planetInfoPanel.style.borderRadius = '8px';
+        planetInfoPanel.style.zIndex = '100';
+        planetInfoPanel.style.width = '250px';
+        planetInfoPanel.style.display = 'none';
+        document.getElementById('container').appendChild(planetInfoPanel);
+    }
+
+     // Update the planet info panel
+    function updatePlanetInfo(planetName) {
+        if (!planetInfoPanel) return;
         
-        // Camera movement variables
-        let keys = {
-            w: false,
-            a: false,
-            s: false,
-            d: false
-        };
-        let cameraSpeed = 2;
+        let html = `<h3 style="margin-top: 0; color: #ffd700;">${planetName.charAt(0).toUpperCase() + planetName.slice(1)}</h3>`;
         
+        if (planetName === 'sun') {
+            const data = realPlanetData.sun;
+            html += `<p>Type: ${data.type}</p>`;
+            html += `<p>Temperature: ${data.temperature}</p>`;
+            html += `<p>Rotation: ${data.rotation}</p>`;
+        } else if (realPlanetData[planetName]) {
+            const data = realPlanetData[planetName];
+            html += `<p>Orbit Period: ${data.orbitPeriod}</p>`;
+            html += `<p>Rotation Period: ${data.rotationPeriod}</p>`;
+            html += `<p>Distance from Sun: ${data.distance}</p>`;
+        }
+        
+        planetInfoPanel.innerHTML = html;
+        planetInfoPanel.style.display = 'block';
+    }
         // Texture loader with loading manager
         loadingManager = new THREE.LoadingManager();
         let textureLoader = new THREE.TextureLoader(loadingManager);
         
+
         // Texture paths
         const texturePaths = {
             sun: 'textures//8k_sun.jpg',
@@ -279,52 +371,56 @@
         init();
         animate();
 
-        function init() {
-            // Create scene
-            scene = new THREE.Scene();
-            
-            // Create camera
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-            camera.position.set(0, 50, 150);
-            
-            // Create renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            document.getElementById('container').appendChild(renderer.domElement);
-            
-            // Create solar system group (for galaxy movement)
-            solarSystemGroup = new THREE.Group();
-            scene.add(solarSystemGroup);
-            
-            // Preload textures first, then create objects that depend on textures
-            preloadTextures();
+        // Update init function to create planet info panel
+    function init() {
+        // Create scene
+        scene = new THREE.Scene();
+        
+        // Create camera
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.position.set(0, 50, 150);
+        
+        // Create renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('container').appendChild(renderer.domElement);
+        
+        // Create solar system group (for galaxy movement)
+        solarSystemGroup = new THREE.Group();
+        scene.add(solarSystemGroup);
+        
+        // Preload textures first, then create objects that depend on textures
+        preloadTextures();
 
-            // Add stars background
-            createStarField();
+        // Add stars background
+        createStarField();
+        
+        // Create planet info panel
+        createPlanetInfoPanel();
 
-            // Wait for all textures to load before creating sun, planets and orbits
-            loadingManager.onLoad = function() {
-                console.log('All textures loaded successfully');
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('controls').style.display = 'block';
-                document.getElementById('info').style.display = 'block';
+        // Wait for all textures to load before creating sun, planets and orbits
+        loadingManager.onLoad = function() {
+            console.log('All textures loaded successfully');
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('controls').style.display = 'block';
+            document.getElementById('info').style.display = 'block';
 
-                createSun();
-                createPlanets();
-                createOrbits();
-            };
+            createSun();
+            createPlanets();
+            createOrbits();
+        };
 
-            // Add mouse controls
-            addMouseControls();
-            
-            // Add keyboard controls
-            addKeyboardControls();
-            
-            // Handle window resize
-            window.addEventListener('resize', onWindowResize);
-        }
+        // Add mouse controls
+        addMouseControls();
+        
+        // Add keyboard controls
+        addKeyboardControls();
+        
+        // Handle window resize
+        window.addEventListener('resize', onWindowResize);
+    }
         
         function createStarField() {
             // Create sphere for milky way background
@@ -405,7 +501,7 @@
                 let material;
                 
                 // Special handling for Earth with multiple textures
-                if (planetName === 'earth' && loadedTextures.earth) {
+                if (planetName === 'earth' && loadedTextures.earth ) {
                     material = new THREE.MeshPhongMaterial({
                         map: loadedTextures.earth,
                         bumpMap: loadedTextures.earthNormal,
@@ -528,70 +624,94 @@
             });
         }
         
-        function createOrbits() {
-            Object.keys(planetData).forEach(planetName => {
-                const data = planetData[planetName];
-                const orbitGeometry = new THREE.RingGeometry(data.distance - 0.1, data.distance + 0.1, 64);
-                const orbitMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0x444444, 
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 0.3
-                });
-                const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
-                orbit.rotation.x = Math.PI / 2;
-                solarSystemGroup.add(orbit);
-                orbits.push(orbit);
+        // Create improved orbits with better visibility
+    function createOrbits() {
+        Object.keys(planetData).forEach(planetName => {
+            const data = planetData[planetName];
+            const orbitGeometry = new THREE.RingGeometry(data.distance - 0.2, data.distance + 0.2, 128);
+            const orbitMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x888888, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.5
             });
+            const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
+            orbit.rotation.x = Math.PI / 2;
+            solarSystemGroup.add(orbit);
+            orbits.push(orbit);
+        });
+    }
+
+     
+        
+        // Update keyboard controls to add space and ctrl
+    function addKeyboardControls() {
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === ' ') {
+                keys.space = true;
+                e.preventDefault();
+            } else if (key === 'control') {
+                keys.control = true;
+                e.preventDefault();
+            } else if (keys.hasOwnProperty(key)) {
+                keys[key] = true;
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === ' ') {
+                keys.space = false;
+                e.preventDefault();
+            } else if (key === 'control') {
+                keys.control = false;
+                e.preventDefault();
+            } else if (keys.hasOwnProperty(key)) {
+                keys[key] = false;
+                e.preventDefault();
+            }
+        });
+    }
+        
+        // Update camera movement with vertical controls
+    function updateCameraMovement() {
+        if (currentFocus) return; // Don't move camera when focusing on a planet
+        
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        
+        const cameraRight = new THREE.Vector3();
+        cameraRight.crossVectors(cameraDirection, camera.up).normalize();
+        
+        const cameraUp = new THREE.Vector3();
+        cameraUp.crossVectors(cameraRight, cameraDirection).normalize();
+        
+        const moveVector = new THREE.Vector3();
+        
+        if (keys.w) {
+            moveVector.add(cameraDirection.clone().multiplyScalar(cameraSpeed));
+        }
+        if (keys.s) {
+            moveVector.add(cameraDirection.clone().multiplyScalar(-cameraSpeed));
+        }
+        if (keys.a) {
+            moveVector.add(cameraRight.clone().multiplyScalar(-cameraSpeed));
+        }
+        if (keys.d) {
+            moveVector.add(cameraRight.clone().multiplyScalar(cameraSpeed));
+        }
+        // Add up/down movement
+        if (keys.space) {
+            moveVector.add(new THREE.Vector3(0, cameraSpeed, 0));
+        }
+        if (keys.control) {
+            moveVector.add(new THREE.Vector3(0, -cameraSpeed, 0));
         }
         
-        function addKeyboardControls() {
-            document.addEventListener('keydown', (e) => {
-                const key = e.key.toLowerCase();
-                if (keys.hasOwnProperty(key)) {
-                    keys[key] = true;
-                    e.preventDefault();
-                }
-            });
-            
-            document.addEventListener('keyup', (e) => {
-                const key = e.key.toLowerCase();
-                if (keys.hasOwnProperty(key)) {
-                    keys[key] = false;
-                    e.preventDefault();
-                }
-            });
-        }
-        
-        function updateCameraMovement() {
-            if (currentFocus) return; // Don't move camera when focusing on a planet
-            
-            const cameraDirection = new THREE.Vector3();
-            camera.getWorldDirection(cameraDirection);
-            
-            const cameraRight = new THREE.Vector3();
-            cameraRight.crossVectors(cameraDirection, camera.up).normalize();
-            
-            const cameraUp = new THREE.Vector3();
-            cameraUp.crossVectors(cameraRight, cameraDirection).normalize();
-            
-            const moveVector = new THREE.Vector3();
-            
-            if (keys.w) {
-                moveVector.add(cameraDirection.multiplyScalar(cameraSpeed));
-            }
-            if (keys.s) {
-                moveVector.add(cameraDirection.multiplyScalar(-cameraSpeed));
-            }
-            if (keys.a) {
-                moveVector.add(cameraRight.multiplyScalar(-cameraSpeed));
-            }
-            if (keys.d) {
-                moveVector.add(cameraRight.multiplyScalar(cameraSpeed));
-            }
-            
-            camera.position.add(moveVector);
-        }
+        camera.position.add(moveVector);
+    }
         
         function addMouseControls() {
             let isDragging = false;
@@ -637,68 +757,83 @@
             });
         }
         
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            const time = Date.now() * 0.001 * timeSpeed;
-            galaxyTime += 0.001 * timeSpeed;
-            
-            // Update camera movement based on keyboard input
-            updateCameraMovement();
-            
-            // Rotate sun
-            if (sun) {
-                sun.rotation.y += 0.01 * timeSpeed;
-            }
-            
-            // Move solar system through galaxy
-            solarSystemGroup.position.x = Math.sin(galaxyTime * 0.1) * 5;
-            solarSystemGroup.position.z = Math.cos(galaxyTime * 0.1) * 5;
-            solarSystemGroup.rotation.y += 0.001 * timeSpeed;
-            
-            // Animate planets
-            Object.keys(planets).forEach(planetName => {
-                const planet = planets[planetName];
-                const data = planet.data;
-                
-                // Orbital motion
-                const angle = time * data.speed * 0.1;
-                planet.group.position.x = Math.cos(angle) * data.distance;
-                planet.group.position.z = Math.sin(angle) * data.distance;
-                
-                // Planet rotation
-                planet.mesh.rotation.y += data.rotationSpeed * 0.02 * timeSpeed;
-                
-                // Animate moons
-                data.moons.forEach(moonName => {
-                    if (moons[moonName]) {
-                        const moon = moons[moonName];
-                        const moonAngle = time * moon.data.speed * 0.2;
-                        moon.group.rotation.y = moonAngle;
-                    }
-                });
-            });
-            
-            // Camera following
-            if (currentFocus) {
-                let targetPosition;
-                if (currentFocus === 'sun') {
-                    targetPosition = sun.position.clone();
-                    targetPosition.add(solarSystemGroup.position);
-                } else if (planets[currentFocus]) {
-                    targetPosition = planets[currentFocus].group.position.clone();
-                    targetPosition.add(solarSystemGroup.position);
-                }
-                
-                if (targetPosition) {
-                    const offset = new THREE.Vector3(0, 10, 20);
-                    camera.position.copy(targetPosition).add(offset);
-                    camera.lookAt(targetPosition);
-                }
-            }
-            
-            renderer.render(scene, camera);
+        // Update the animate function with improved planet following
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const time = Date.now() * 0.001 * timeSpeed;
+        galaxyTime += 0.001 * timeSpeed;
+        
+        // Update camera movement based on keyboard input
+        updateCameraMovement();
+        
+        // Rotate sun
+        if (sun) {
+            sun.rotation.y += 0.01 * timeSpeed;
         }
+        
+        // Move solar system through galaxy
+        solarSystemGroup.position.x = Math.sin(galaxyTime * 0.1) * 5;
+        solarSystemGroup.position.z = Math.cos(galaxyTime * 0.1) * 5;
+        solarSystemGroup.rotation.y += 0.001 * timeSpeed;
+        
+        // Animate planets
+        Object.keys(planets).forEach(planetName => {
+            const planet = planets[planetName];
+            const data = planet.data;
+            
+            // Orbital motion
+            const angle = time * data.speed * 0.1;
+            planet.group.position.x = Math.cos(angle) * data.distance;
+            planet.group.position.z = Math.sin(angle) * data.distance;
+            
+            // Planet rotation
+            planet.mesh.rotation.y += data.rotationSpeed * 0.02 * timeSpeed;
+            
+            // Update Earth shader for day/night cycle if it exists
+            if (planetName === 'earth' && planet.mesh.material.uniforms) {
+                const sunDirection = new THREE.Vector3();
+                sunDirection.subVectors(solarSystemGroup.position, planet.group.position).normalize();
+                planet.mesh.material.uniforms.sunDirection.value = sunDirection;
+            }
+            
+            // Animate moons
+            data.moons.forEach(moonName => {
+                if (moons[moonName]) {
+                    const moon = moons[moonName];
+                    const moonAngle = time * moon.data.speed * 0.2;
+                    moon.group.rotation.y = moonAngle;
+                }
+            });
+        });
+        
+      
+if (currentFocus) {
+    let targetPosition = new THREE.Vector3();
+
+    if (currentFocus === 'sun') {
+        targetPosition.copy(solarSystemGroup.position);
+
+        // Fixed offset for sun
+        const fixedOffset = new THREE.Vector3(0, 5, 15);
+        camera.position.copy(targetPosition).add(fixedOffset);
+        camera.lookAt(targetPosition);
+    } else if (planets[currentFocus]) {
+        const planet = planets[currentFocus];
+        // Get the world position of the planet
+        const planetWorldPos = planet.group.getWorldPosition(new THREE.Vector3());
+
+        // Fixed offset for planet (no rotation around)
+        const viewDistance = Math.max(planet.data.size * 8, 8);
+        const offset = new THREE.Vector3(0, planet.data.size * 3, viewDistance);
+
+        camera.position.copy(planetWorldPos).add(offset);
+        camera.lookAt(planetWorldPos);
+    }
+}
+        // Render the scene        
+        renderer.render(scene, camera);
+    }
         
         function setTimeSpeed(speed) {
             timeSpeed = speed;
@@ -710,28 +845,45 @@
             event.target.classList.add('active');
         }
         
-        function focusPlanet(planetName) {
-            currentFocus = planetName;
-            document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
-            
-            // Update button states
-            document.querySelectorAll('.planet-controls button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
+        // Update focusPlanet function with toggle functionality
+    function focusPlanet(planetName) {
+        // If already focusing on this planet, toggle focus off
+        if (currentFocus === planetName) {
+            resetCamera();
+            return;
         }
         
-        function resetCamera() {
-            currentFocus = null;
-            camera.position.set(0, 50, 150);
-            camera.lookAt(0, 0, 0);
-            document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
-            
-            // Remove active state from planet buttons
-            document.querySelectorAll('.planet-controls button').forEach(btn => {
-                btn.classList.remove('active');
-            });
+        currentFocus = planetName;
+        document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
+        
+        // Update button states
+        document.querySelectorAll('.planet-controls button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        // Show planet information
+        updatePlanetInfo(planetName);
+    }
+
+        
+        // Update resetCamera function to also hide planet info
+    function resetCamera() {
+        currentFocus = null;
+        camera.position.set(0, 50, 150);
+        camera.lookAt(0, 0, 0);
+        document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
+        
+        // Remove active state from planet buttons
+        document.querySelectorAll('.planet-controls button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Hide planet info panel
+        if (planetInfoPanel) {
+            planetInfoPanel.style.display = 'none';
         }
+    }
         
         function toggleOrbits() {
             const show = document.getElementById('showOrbits').checked;
