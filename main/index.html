@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar System Simulation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <div id="loading">Loading textures...</div>
+        
+        <div id="controls" style="display: none;">
+            <div class="control-group">
+                <h3>Time Speed</h3>
+                <div class="speed-controls">
+                    <button onclick="setTimeSpeed(1)" class="active">x1</button>
+                    <button onclick="setTimeSpeed(2)">x2</button>
+                    <button onclick="setTimeSpeed(4)">x4</button>
+                    <button onclick="setTimeSpeed(8)">x8</button>
+                    <button onclick="setTimeSpeed(16)">x16</button>
+                    <button onclick="setTimeSpeed(32)">x32</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Focus Planet</h3>
+                <div class="planet-controls">
+                    <button onclick="focusPlanet('sun')">Sun</button>
+                    <button onclick="focusPlanet('mercury')">Mercury</button>
+                    <button onclick="focusPlanet('venus')">Venus</button>
+                    <button onclick="focusPlanet('earth')">Earth</button>
+                    <button onclick="focusPlanet('mars')">Mars</button>
+                    <button onclick="focusPlanet('jupiter')">Jupiter</button>
+                    <button onclick="focusPlanet('saturn')">Saturn</button>
+                    <button onclick="focusPlanet('uranus')">Uranus</button>
+                    <button onclick="focusPlanet('neptune')">Neptune</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>View Options</h3>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showOrbits" checked onchange="toggleOrbits()">
+                    <label for="showOrbits">Show Orbits</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showMoons" checked onchange="toggleMoons()">
+                    <label for="showMoons">Show Moons</label>
+                </div>
+                <button onclick="resetCamera()">Reset Camera</button>
+            </div>
+        </div>
+        
+        <div id="info" style="display: none;">
+            <div>Camera: Free roam (drag to rotate, scroll to zoom, WASD to move)</div>
+            <div>Controls: W=Forward, S=Backward, A=Left, D=Right</div>
+            <div>Galaxy motion: Solar system moves through space</div>
+            <div id="currentFocus">Focus: Free Camera</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
