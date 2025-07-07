@@ -52,6 +52,17 @@
             </div>
 
             <div class="control-group">
+                <h3>Scale View</h3>
+                <div class="planet-controls">
+                    <button onclick="changeScale(0)">Inner System</button>
+                    <button onclick="changeScale(1)">Outer System</button>
+                    <button onclick="changeScale(2)">Kuiper Belt</button>
+                    <button onclick="changeScale(3)">Oort Cloud</button>
+                    <button onclick="changeScale(4)">Galactic</button>
+                </div>
+            </div>
+
+            <div class="control-group">
                 <h3>View Options</h3>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showOrbits" checked onchange="toggleOrbits()">
@@ -83,7 +94,7 @@
         <div id="planet-info" style="display: none;"></div>
 
         <div class="scale-indicator">
-            <div id="currentScale">Scale: Solar System</div>
+            <div id="currentScale">Scale: Inner Solar System</div>
             <div id="scaleDistance">Distance: 0 AU</div>
         </div>
     </div>
