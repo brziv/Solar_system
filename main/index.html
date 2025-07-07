@@ -15,13 +15,20 @@
         <div id="controls" style="display: none;">
             <div class="control-group">
                 <h3>Time Speed</h3>
-                <div class="speed-controls">
-                    <button onclick="setTimeSpeed(1)" class="active">x1</button>
-                    <button onclick="setTimeSpeed(2)">x2</button>
-                    <button onclick="setTimeSpeed(4)">x4</button>
-                    <button onclick="setTimeSpeed(8)">x8</button>
-                    <button onclick="setTimeSpeed(16)">x16</button>
-                    <button onclick="setTimeSpeed(32)">x32</button>
+                <div class="slider-container">
+                    <input type="range" id="timeSpeedSlider" min="0" max="10" step="0.1" value="1" 
+                           oninput="setTimeSpeed(parseFloat(this.value))">
+                    <span id="timeSpeedValue">1.0x</span>
+                </div>
+                <button id="pauseButton" onclick="togglePause()">⏸ Pause</button>
+            </div>
+
+            <div class="control-group">
+                <h3>Movement Speed</h3>
+                <div class="slider-container">
+                    <input type="range" id="movementSpeedSlider" min="1" max="200" step="1" value="10" 
+                           oninput="setMovementSpeed(parseFloat(this.value))">
+                    <span id="movementSpeedValue">5</span>
                 </div>
             </div>
 
@@ -52,17 +59,6 @@
             </div>
 
             <div class="control-group">
-                <h3>Scale View</h3>
-                <div class="planet-controls">
-                    <button onclick="changeScale(0)">Inner System</button>
-                    <button onclick="changeScale(1)">Outer System</button>
-                    <button onclick="changeScale(2)">Kuiper Belt</button>
-                    <button onclick="changeScale(3)">Oort Cloud</button>
-                    <button onclick="changeScale(4)">Galactic</button>
-                </div>
-            </div>
-
-            <div class="control-group">
                 <h3>View Options</h3>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showOrbits" checked onchange="toggleOrbits()">
@@ -71,6 +67,10 @@
                 <div class="checkbox-group">
                     <input type="checkbox" id="showMoons" checked onchange="toggleMoons()">
                     <label for="showMoons">Show Moons</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showDwarfPlanets" checked onchange="toggleDwarfPlanets()">
+                    <label for="showDwarfPlanets">Show Dwarf Planets</label>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showAsteroidBelt" checked onchange="toggleAsteroidBelt()">
@@ -86,17 +86,12 @@
 
         <div id="info" style="display: none;">
             <div>Camera: Free roam (drag to rotate, scroll to zoom, WASD to move)</div>
-            <div>Controls: W=Forward, S=Backward, A=Left, D=Right, Space=Up, Ctrl=Down</div>
-            <div>Galaxy motion: Solar system moves through space</div>
+            <div>Controls: W=Forward, S=Backward, A=Left, D=Right, Space=Up, Shift=Down</div>
+            <div>Movement speed: Use controls panel to adjust travel speed</div>
             <div id="currentFocus">Focus: Free Camera</div>
         </div>
 
         <div id="planet-info" style="display: none;"></div>
-
-        <div class="scale-indicator">
-            <div id="currentScale">Scale: Inner Solar System</div>
-            <div id="scaleDistance">Distance: 0 AU</div>
-        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

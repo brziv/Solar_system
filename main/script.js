@@ -1,29 +1,20 @@
 // Global variables
 let scene, camera, renderer;
-let sun, planets = {}, moons = {};
-let orbits = [];
+let sun, planets = {}, moons = {}, dwarfPlanets = {};
+let orbits = [], dwarfOrbits = [];
+let asteroidBelt, kuiperBelt;
 let timeSpeed = 1;
+let movementSpeed = 10;
 let currentFocus = null;
 let solarSystemGroup;
-let galaxyTime = 0;
 let loadedTextures = {};
 let loadingManager;
-let planetInfoPanel;
+let isPaused = false;
 
-// New variables for enhanced features
-let asteroidBelt, kuiperBelt;
-let dwarfPlanets = {};
-let dwarfPlanetOrbits = [];
-let currentScale = 0; // 0: Inner system, 1: Outer system, 2: Kuiper belt, 3: Oort cloud, 4: Galactic
-let scaleTransitionTime = 0;
-let galaxyGroup;
-let scaleData = {
-    0: { name: "Inner Solar System", cameraDistance: 150, showGalaxy: false, scale: 1 },
-    1: { name: "Outer Solar System", cameraDistance: 300, showGalaxy: false, scale: 1 },
-    2: { name: "Kuiper Belt", cameraDistance: 600, showGalaxy: false, scale: 1 },
-    3: { name: "Oort Cloud", cameraDistance: 1200, showGalaxy: false, scale: 0.1 },
-    4: { name: "Galactic View", cameraDistance: 5000, showGalaxy: true, scale: 0.001 }
-};
+// Preview sphere variables
+let previewScene, previewCamera, previewRenderer;
+let previewSphere = null;
+let previewContainer = null;
 
 // Camera movement variables
 let keys = {
@@ -32,855 +23,656 @@ let keys = {
     s: false,
     d: false,
     space: false,
-    control: false
-};
-let cameraSpeed = 2;
-// Real astronomical data for planet info
-const realPlanetData = {
-    sun: {
-        type: "G-type main-sequence star",
-        temperature: "5,778 K",
-        rotation: "25.05 days (equator)"
-    },
-    mercury: {
-        orbitPeriod: "88 days",
-        rotationPeriod: "58.6 days",
-        distance: "0.39 AU"
-    },
-    venus: {
-        orbitPeriod: "225 days",
-        rotationPeriod: "243 days",
-        distance: "0.72 AU"
-    },
-    earth: {
-        orbitPeriod: "365.25 days",
-        rotationPeriod: "1 day",
-        distance: "1 AU"
-    },
-    mars: {
-        orbitPeriod: "687 days",
-        rotationPeriod: "1.03 days",
-        distance: "1.52 AU"
-    },
-    jupiter: {
-        orbitPeriod: "11.86 years",
-        rotationPeriod: "9.93 hours",
-        distance: "5.2 AU"
-    },
-    saturn: {
-        orbitPeriod: "29.46 years",
-        rotationPeriod: "10.7 hours",
-        distance: "9.58 AU"
-    },
-    uranus: {
-        orbitPeriod: "84.01 years",
-        rotationPeriod: "17.24 hours",
-        distance: "19.22 AU"
-    },
-    neptune: {
-        orbitPeriod: "164.8 years",
-        rotationPeriod: "16.1 hours",
-        distance: "30.1 AU"
-    },
-    ceres: {
-        orbitPeriod: "4.6 years",
-        rotationPeriod: "9.1 hours",
-        distance: "2.77 AU",
-        type: "Dwarf planet (asteroid belt)"
-    },
-    pluto: {
-        orbitPeriod: "248 years",
-        rotationPeriod: "6.4 days",
-        distance: "39.5 AU",
-        type: "Dwarf planet (Kuiper belt)"
-    },
-    eris: {
-        orbitPeriod: "558 years",
-        rotationPeriod: "25.9 hours",
-        distance: "67.7 AU",
-        type: "Dwarf planet (scattered disk)"
-    },
-    haumea: {
-        orbitPeriod: "284 years",
-        rotationPeriod: "3.9 hours",
-        distance: "43.3 AU",
-        type: "Dwarf planet (Kuiper belt)"
-    },
-    makemake: {
-        orbitPeriod: "310 years",
-        rotationPeriod: "22.5 hours",
-        distance: "45.8 AU",
-        type: "Dwarf planet (Kuiper belt)"
-    }
+    ctrl: false,
+    shift: false
 };
 
-// Add the planet info panel
-function createPlanetInfoPanel() {
-    planetInfoPanel = document.createElement('div');
-    planetInfoPanel.id = 'planet-info';
-    planetInfoPanel.style.position = 'absolute';
-    planetInfoPanel.style.top = '10px';
-    planetInfoPanel.style.right = '10px';
-    planetInfoPanel.style.background = 'rgba(0, 0, 0, 0.8)';
-    planetInfoPanel.style.color = 'white';
-    planetInfoPanel.style.padding = '15px';
-    planetInfoPanel.style.borderRadius = '8px';
-    planetInfoPanel.style.zIndex = '100';
-    planetInfoPanel.style.width = '250px';
-    planetInfoPanel.style.display = 'none';
-    document.getElementById('container').appendChild(planetInfoPanel);
-}
+// Mouse controls
+let mouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
 
-// Update the planet info panel
-function updatePlanetInfo(planetName) {
-    if (!planetInfoPanel) return;
-
-    let html = `<h3 style="margin-top: 0; color: #ffd700;">${planetName.charAt(0).toUpperCase() + planetName.slice(1)}</h3>`;
-
-    if (planetName === 'sun') {
-        const data = realPlanetData.sun;
-        html += `<p>Type: ${data.type}</p>`;
-        html += `<p>Temperature: ${data.temperature}</p>`;
-        html += `<p>Rotation: ${data.rotation}</p>`;
-    } else if (realPlanetData[planetName]) {
-        const data = realPlanetData[planetName];
-        html += `<p>Orbit Period: ${data.orbitPeriod}</p>`;
-        html += `<p>Rotation Period: ${data.rotationPeriod}</p>`;
-        html += `<p>Distance from Sun: ${data.distance}</p>`;
-    }
-
-    planetInfoPanel.innerHTML = html;
-    planetInfoPanel.style.display = 'block';
-}
-// Texture loader with loading manager
-loadingManager = new THREE.LoadingManager();
-let textureLoader = new THREE.TextureLoader(loadingManager);
-
-
-// Texture paths
-const texturePaths = {
-    sun: 'textures//8k_sun.jpg',
-    mercury: 'textures//8k_mercury.jpg',
-    venus: 'textures//8k_venus_surface.jpg',
-    venusAtmosphere: 'textures//4k_venus_atmosphere.jpg',
-    earth: 'textures//8k_earth_daymap.jpg',
-    earthNight: 'textures//8k_earth_nightmap.jpg',
-    earthClouds: 'textures//8k_earth_clouds.jpg',
-    earthNormal: 'textures//8k_earth_normal_map.tif',
-    earthSpecular: 'textures//8k_earth_specular_map.tif',
-    moon: 'textures//8k_moon.jpg',
-    ceres: 'textures//4k_ceres.jpg',
-    mars: 'textures//8k_mars.jpg',
-    jupiter: 'textures//8k_jupiter.jpg',
-    saturn: 'textures//8k_saturn.jpg',
-    saturnRings: 'textures//8k_saturn_ring_alpha.png',
-    uranus: 'textures//2k_uranus.jpg',
-    neptune: 'textures//2k_neptune.jpg',
-    pluto: 'textures//2k_pluto.jpg',
-    eris: 'textures//4k_eris.jpg',
-    haumea: 'textures//4k_haumea.jpg',
-    makemake: 'textures//4k_makemake.jpg',
-    milkyWay: 'textures//milky_way.jpg',
+// Solar system data - Sun at 2x Jupiter for visibility
+const sunData = {
+    size: 22  // 2x Jupiter size (11 * 2 = 22)
 };
 
-// Fallback colors for when textures fail to load
-const fallbackColors = {
-    sun: 0xffff00,
-    mercury: 0x8c7853,
-    venus: 0xffa500,
-    earth: 0x6b93d6,
-    mars: 0xcd5c5c,
-    jupiter: 0xd8ca9d,
-    saturn: 0xfad5a5,
-    uranus: 0x4fd0e4,
-    neptune: 0x4b70dd,
-    moon: 0x888888,
-    ceres: 0x8c7853,
-    pluto: 0xd4a574,
-    eris: 0xcccccc,
-    haumea: 0xffffff,
-    makemake: 0xd4a574
-};
-
-// Real astronomical data (scaled for visualization)
+// Planet data relative to Earth (Earth = 1 unit) - Realistic proportions
 const planetData = {
-    mercury: { distance: 15, size: 0.4, speed: 4.15, rotationSpeed: 0.017, color: 0x8c7853, moons: [] },
-    venus: { distance: 20, size: 0.9, speed: 1.62, rotationSpeed: -0.004, color: 0xffa500, moons: [] },
-    earth: { distance: 25, size: 1, speed: 1.0, rotationSpeed: 1.0, color: 0x6b93d6, moons: ['moon'] },
-    mars: { distance: 35, size: 0.5, speed: 0.53, rotationSpeed: 0.97, color: 0xcd5c5c, moons: [] },
-    jupiter: { distance: 55, size: 5, speed: 0.084, rotationSpeed: 2.4, color: 0xd8ca9d, moons: ['io', 'europa', 'ganymede', 'callisto'] },
-    saturn: { distance: 75, size: 4, speed: 0.034, rotationSpeed: 2.2, color: 0xfad5a5, moons: ['titan', 'enceladus'] },
-    uranus: { distance: 95, size: 2, speed: 0.012, rotationSpeed: 1.4, color: 0x4fd0e4, moons: [] },
-    neptune: { distance: 115, size: 2, speed: 0.006, rotationSpeed: 1.5, color: 0x4b70dd, moons: [] }
+    mercury: { size: 0.38, distance: 2.0, speed: 0.008, color: 0x8C7853, inclination: 7.0 },
+    venus: { size: 0.95, distance: 3.5, speed: 0.006, color: 0xFFC649, inclination: 3.4 },
+    earth: { size: 1, distance: 5.0, speed: 0.005, color: 0x6B93D6, hasAtmosphere: true, inclination: 0.0 },
+    mars: { size: 0.53, distance: 7.5, speed: 0.004, color: 0xCD5C5C, inclination: 1.9 },
+    jupiter: { size: 11, distance: 26.0, speed: 0.002, color: 0xD8CA9D, inclination: 1.3 },
+    saturn: { size: 9, distance: 47.5, speed: 0.0015, color: 0xFAD5A5, hasRings: true, inclination: 2.5 },
+    uranus: { size: 4, distance: 96.0, speed: 0.001, color: 0x4FD0E7, inclination: 0.8 },
+    neptune: { size: 3.9, distance: 150.0, speed: 0.0008, color: 0x4B70DD, inclination: 1.8 }
 };
 
-// Dwarf planet data with elliptical orbits
+// Dwarf planet data with orbital inclinations and eccentricity - Realistic proportions
 const dwarfPlanetData = {
-    ceres: {
-        semiMajorAxis: 45,  // Scaled between Mars and Jupiter
-        eccentricity: 0.08,
-        inclination: 0.19,
-        longitudeOfAscendingNode: 0,
-        argumentOfPeriapsis: 0,
-        size: 0.3,
-        speed: 0.22,
-        rotationSpeed: 2.6,
-        color: 0x8c7853
-    },
-    pluto: {
-        semiMajorAxis: 200,
-        eccentricity: 0.25,
-        inclination: 0.3,  // 17 degrees in radians
-        longitudeOfAscendingNode: 0.19,  // Additional orbital parameter
-        argumentOfPeriapsis: 0.26,      // Makes orbit cross Neptune's
-        size: 0.18,
-        speed: 0.004,
-        rotationSpeed: 0.16,
-        color: 0xd4a574
-    },
-    eris: {
-        semiMajorAxis: 350,
-        eccentricity: 0.44,
-        inclination: 0.79,
-        longitudeOfAscendingNode: 0.61,
-        argumentOfPeriapsis: 0.33,
-        size: 0.19,
-        speed: 0.0018,
-        rotationSpeed: 0.93,
-        color: 0xcccccc
-    },
-    haumea: {
-        semiMajorAxis: 220,
-        eccentricity: 0.19,
-        inclination: 0.49,
-        longitudeOfAscendingNode: 0.35,
-        argumentOfPeriapsis: 0.18,
-        size: 0.16,
-        speed: 0.0035,
-        rotationSpeed: 6.1,
-        color: 0xffffff
-    },
-    makemake: {
-        semiMajorAxis: 240,
-        eccentricity: 0.16,
-        inclination: 0.51,
-        longitudeOfAscendingNode: 0.14,
-        argumentOfPeriapsis: 0.28,
-        size: 0.14,
-        speed: 0.0032,
-        rotationSpeed: 1.1,
-        color: 0xd4a574
-    }
+    ceres: { size: 0.15, distance: 14.0, speed: 0.003, color: 0x8C7853, type: 'asteroid belt', inclination: 10.6, eccentricity: 0.076 },
+    pluto: { size: 0.18, distance: 197.5, speed: 0.0006, color: 0xD4A574, type: 'kuiper belt', inclination: 17.2, eccentricity: 0.244 },
+    eris: { size: 0.19, distance: 338.5, speed: 0.0005, color: 0xCCCCCC, type: 'scattered disk', inclination: 44.2, eccentricity: 0.436 },
+    haumea: { size: 0.12, distance: 216.5, speed: 0.0006, color: 0xFFFFFF, type: 'kuiper belt', inclination: 28.2, eccentricity: 0.189 },
+    makemake: { size: 0.11, distance: 229.0, speed: 0.0005, color: 0xD4A574, type: 'kuiper belt', inclination: 29.0, eccentricity: 0.159 }
 };
 
+// Moon data - Realistic proportions
 const moonData = {
-    moon: { distance: 2, size: 0.27, speed: 13.4, color: 0x888888 },
-    io: { distance: 3, size: 0.3, speed: 10, color: 0xffff99 },
-    europa: { distance: 4, size: 0.25, speed: 8, color: 0xaaaaff },
-    ganymede: { distance: 5, size: 0.4, speed: 6, color: 0x999999 },
-    callisto: { distance: 6, size: 0.35, speed: 4, color: 0x666666 },
-    titan: { distance: 5, size: 0.4, speed: 7, color: 0xffa500 },
-    enceladus: { distance: 3, size: 0.15, speed: 12, color: 0xffffff }
+    earth: [{ name: 'moon', size: 0.27, distance: 15, speed: 0.02, color: 0x969696 }]
 };
 
-// Loading manager events
-loadingManager.onLoad = function () {
-    console.log('All textures loaded successfully');
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('controls').style.display = 'block';
-    document.getElementById('info').style.display = 'block';
-};
-
-loadingManager.onProgress = function (url, loaded, total) {
-    console.log(`Loading: ${loaded}/${total} - ${url}`);
-    document.getElementById('loading').textContent = `Loading textures... ${loaded}/${total}`;
-};
-
-loadingManager.onError = function (url) {
-    console.error('Failed to load:', url);
-};
-
-// Preload all textures
-function preloadTextures() {
-    Object.keys(texturePaths).forEach(key => {
-        textureLoader.load(
-            texturePaths[key],
-            function (texture) {
-                loadedTextures[key] = texture;
-                console.log(`Loaded texture: ${key}`);
-            },
-            undefined,
-            function (error) {
-                console.error(`Failed to load texture ${key}:`, error);
-                loadedTextures[key] = null;
-            }
-        );
-    });
-}
-
-init();
-animate();
-
-// Update init function to create planet info panel
+// Initialize the solar system
 function init() {
     // Create scene
     scene = new THREE.Scene();
 
     // Create camera
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-    camera.position.set(0, 50, 150);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300000);
+    camera.position.set(0, 500, 1500); // Moved back further for larger system
 
     // Create renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setClearColor(0x000011);
     document.getElementById('container').appendChild(renderer.domElement);
 
-    // Create solar system group (for galaxy movement)
+    // Create solar system group
     solarSystemGroup = new THREE.Group();
     scene.add(solarSystemGroup);
 
-    // Preload textures first, then create objects that depend on textures
-    preloadTextures();
-
-    // Add stars background
-    createStarField();
-
-    // Create planet info panel
-    createPlanetInfoPanel();
-
-    // Wait for all textures to load before creating sun, planets and orbits
-    loadingManager.onLoad = function () {
-        console.log('All textures loaded successfully');
+    // Set up loading manager
+    loadingManager = new THREE.LoadingManager();
+    loadingManager.onProgress = (url, loaded, total) => {
+        const progress = (loaded / total) * 100;
+        document.getElementById('loading').textContent = `Loading textures... ${Math.round(progress)}%`;
+    };
+    loadingManager.onLoad = () => {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('controls').style.display = 'block';
         document.getElementById('info').style.display = 'block';
 
-        createSun();
-        createPlanets();
-        createOrbits();
-        createDwarfPlanets();
-        createAsteroidBelt();
-        createKuiperBelt();
-        createGalacticStructures();
-
-        // Initialize scale system
-        updateObjectVisibility();
-        
-        // Set initial scale button state
-        changeScale(0); // This will properly set the first button as active
+        createSolarSystem();
+        createPreviewSphere(); // Initialize preview sphere system
+        animate();
     };
 
-    // Add mouse controls
-    addMouseControls();
+    // Load textures
+    loadTextures();
 
-    // Add keyboard controls
-    addKeyboardControls();
-
-    // Handle window resize
-    window.addEventListener('resize', onWindowResize);
+    // Set up event listeners
+    setupEventListeners();
 }
 
-function createStarField() {
-    // Create sphere for background
-    const starSphereGeometry = new THREE.SphereGeometry(1500, 64, 64);
-    const starSphereMaterial = new THREE.MeshBasicMaterial({
-        side: THREE.BackSide,
-        transparent: true,
-        opacity: 0.8,
-        color: 0x111111
-    });
-    const starSphere = new THREE.Mesh(starSphereGeometry, starSphereMaterial);
-    scene.add(starSphere);
+// Load all textures
+function loadTextures() {
+    const textureLoader = new THREE.TextureLoader(loadingManager);
+    const texturePaths = {
+        sun: 'textures/8k_sun.jpg',
+        mercury: 'textures/8k_mercury.jpg',
+        venus: 'textures/8k_venus_surface.jpg',
+        earth: 'textures/8k_earth_daymap.jpg',
+        earthNight: 'textures/8k_earth_nightmap.jpg',
+        earthClouds: 'textures/8k_earth_clouds.jpg',
+        mars: 'textures/8k_mars.jpg',
+        jupiter: 'textures/8k_jupiter.jpg',
+        saturn: 'textures/8k_saturn.jpg',
+        ring: 'textures/8k_saturn_ring.jpg',
+        uranus: 'textures/2k_uranus.jpg',
+        neptune: 'textures/2k_neptune.jpg',
+        moon: 'textures/8k_moon.jpg',
+        // Dwarf planets
+        ceres: 'textures/4k_ceres.jpg',
+        pluto: 'textures/2k_pluto.jpg',
+        eris: 'textures/4k_eris.jpg',
+        haumea: 'textures/4k_haumea.jpg',
+        makemake: 'textures/4k_makemake.jpg'
+    };
 
-    // Add additional point stars for depth
+    for (let key in texturePaths) {
+        textureLoader.load(texturePaths[key], (texture) => {
+            loadedTextures[key] = texture;
+        });
+    }
+}
+
+// Create the solar system
+function createSolarSystem() {
+    // Create starfield background
+    createStarfield();
+
+    // Create sun
+    createSun();
+
+    // Create planets
+    for (let planetName in planetData) {
+        createPlanet(planetName, planetData[planetName]);
+    }
+
+    // Create dwarf planets
+    for (let dwarfName in dwarfPlanetData) {
+        createDwarfPlanet(dwarfName, dwarfPlanetData[dwarfName]);
+    }
+
+    // Create moons
+    for (let planetName in moonData) {
+        if (planets[planetName]) {
+            moonData[planetName].forEach(moonInfo => {
+                createMoon(planetName, moonInfo);
+            });
+        }
+    }
+
+    // Create orbits
+    createOrbits();
+
+    // Create asteroid belt
+    createAsteroidBelt();
+
+    // Create kuiper belt
+    createKuiperBelt();
+}
+
+// Create starfield background
+function createStarfield() {
     const starGeometry = new THREE.BufferGeometry();
-    const starCount = 10000;
+    const starCount = 25000;
     const positions = new Float32Array(starCount * 3);
 
-    for (let i = 0; i < starCount * 3; i++) {
-        positions[i] = (Math.random() - 0.5) * 1000;
+    for (let i = 0; i < starCount; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 200000;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 200000;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 200000;
     }
 
     starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
     const starMaterial = new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 0.5,
-        transparent: true,
-        opacity: 0.6
+        color: 0xFFFFFF,
+        size: 1,
+        sizeAttenuation: false
     });
+
     const stars = new THREE.Points(starGeometry, starMaterial);
     scene.add(stars);
 }
 
+// Create the sun
 function createSun() {
-    const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+    const geometry = new THREE.SphereGeometry(sunData.size * 8, 32, 32);
+    let material;
 
-    let sunMaterial;
     if (loadedTextures.sun) {
-        sunMaterial = new THREE.MeshBasicMaterial({
+        material = new THREE.MeshBasicMaterial({
             map: loadedTextures.sun,
-            emissive: 0xffaa00,
-            emissiveIntensity: 0.2
+            emissive: 0x664400
         });
     } else {
-        sunMaterial = new THREE.MeshBasicMaterial({
-            color: fallbackColors.sun,
-            emissive: 0xffaa00,
-            emissiveIntensity: 0.5
+        material = new THREE.MeshBasicMaterial({
+            color: 0xFFAA00,
+            emissive: 0x664400
         });
     }
 
-    sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    sun = new THREE.Mesh(geometry, material);
     solarSystemGroup.add(sun);
 
-    // Add sun light
-    const sunLight = new THREE.PointLight(0xffffff, 2, 1000);
-    sunLight.position.set(0, 0, 0);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    solarSystemGroup.add(sunLight);
+    // Add sun light that reaches all planets
+    const sunLight = new THREE.PointLight(0xFFFFAA, 1.5, 200000); // Increased range to reach outer planets
+    sunLight.position.copy(sun.position);
+    scene.add(sunLight);
 
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.1);
+    // Add ambient light for better visibility
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
     scene.add(ambientLight);
 }
 
-function createPlanets() {
-    Object.keys(planetData).forEach(planetName => {
-        const data = planetData[planetName];
+// Create a planet
+function createPlanet(name, data) {
+    const geometry = new THREE.SphereGeometry(data.size * 10, 32, 32);
+    let material;
 
-        // Create planet group
-        const planetGroup = new THREE.Group();
+    if (loadedTextures[name]) {
+        material = new THREE.MeshLambertMaterial({ map: loadedTextures[name] });
+    } else {
+        material = new THREE.MeshLambertMaterial({ color: data.color });
+    }
 
-        // Create planet mesh with enhanced materials
-        const geometry = new THREE.SphereGeometry(data.size, 64, 64);
-        let material;
+    const planet = new THREE.Mesh(geometry, material);
 
-        // Special handling for Earth with multiple textures
-        if (planetName === 'earth' && loadedTextures.earth) {
-            material = new THREE.MeshPhongMaterial({
-                map: loadedTextures.earth,
-                bumpMap: loadedTextures.earthNormal,
-                bumpScale: 0.1,
-                specularMap: loadedTextures.earthSpecular,
-                specular: 0x111111,
-                shininess: 100
-            });
+    // Apply orbital inclination if present
+    const inclinationRad = (data.inclination || 0) * Math.PI / 180;
+    const angle = Math.random() * Math.PI * 2;
 
-            // Add Earth's atmosphere/clouds as a separate layer
-            if (loadedTextures.earthClouds) {
-                const cloudGeometry = new THREE.SphereGeometry(data.size * 1.01, 64, 64);
-                const cloudMaterial = new THREE.MeshLambertMaterial({
-                    map: loadedTextures.earthClouds,
-                    transparent: true,
-                    opacity: 0.4
-                });
-                const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
-                planetGroup.add(clouds);
-            }
-        }
-        // Special handling for Saturn with rings
-        else if (planetName === 'saturn') {
-            if (loadedTextures.saturn) {
-                material = new THREE.MeshLambertMaterial({
-                    map: loadedTextures.saturn
-                });
-            } else {
-                material = new THREE.MeshLambertMaterial({ color: data.color });
-            }
+    planet.position.x = Math.cos(angle) * data.distance * 200; // Increased from 30 to 200
+    planet.position.z = Math.sin(angle) * data.distance * 200;
+    planet.position.y = Math.sin(inclinationRad) * data.distance * 10; // Scaled proportionally
 
-            // Add Saturn rings
-            if (loadedTextures.saturnRings) {
-                const ringGeometry = new THREE.RingGeometry(data.size * 1.2, data.size * 2, 64);
-                const ringMaterial = new THREE.MeshLambertMaterial({
-                    map: loadedTextures.saturnRings,
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                const rings = new THREE.Mesh(ringGeometry, ringMaterial);
-                rings.rotation.x = Math.PI / 2;
-                planetGroup.add(rings);
-            }
-        }
-        // Special handling for Venus with atmosphere
-        else if (planetName === 'venus') {
-            if (loadedTextures.venus) {
-                material = new THREE.MeshLambertMaterial({
-                    map: loadedTextures.venus
-                });
-            } else {
-                material = new THREE.MeshLambertMaterial({ color: data.color });
-            }
+    planet.userData = {
+        name,
+        originalDistance: data.distance * 200, // Updated to match
+        speed: data.speed,
+        angle: angle,
+        inclination: inclinationRad
+    };
 
-            // Add Venus atmosphere
-            if (loadedTextures.venusAtmosphere) {
-                const atmosphereGeometry = new THREE.SphereGeometry(data.size * 1.02, 32, 32);
-                const atmosphereMaterial = new THREE.MeshLambertMaterial({
-                    map: loadedTextures.venusAtmosphere,
-                    transparent: true,
-                    opacity: 0.6
-                });
-                const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-                planetGroup.add(atmosphere);
-            }
-        }
-        // Standard planets
-        else {
-            if (loadedTextures[planetName]) {
-                material = new THREE.MeshLambertMaterial({
-                    map: loadedTextures[planetName]
-                });
-            } else {
-                material = new THREE.MeshLambertMaterial({ color: data.color });
-            }
-        }
+    planets[name] = planet;
+    solarSystemGroup.add(planet);
 
-        const planet = new THREE.Mesh(geometry, material);
-        planet.castShadow = true;
-        planet.receiveShadow = true;
-
-        planetGroup.add(planet);
-        planetGroup.position.x = data.distance;
-
-        // Create moons
-        if (data.moons.length > 0) {
-            data.moons.forEach(moonName => {
-                const moonData_item = moonData[moonName];
-                if (moonData_item) {
-                    const moonGeometry = new THREE.SphereGeometry(moonData_item.size, 32, 32);
-
-                    let moonMaterial;
-                    if (loadedTextures[moonName]) {
-                        moonMaterial = new THREE.MeshLambertMaterial({
-                            map: loadedTextures[moonName]
-                        });
-                    } else {
-                        moonMaterial = new THREE.MeshLambertMaterial({
-                            color: moonData_item.color
-                        });
-                    }
-
-                    const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-                    moon.position.x = moonData_item.distance;
-                    moon.castShadow = true;
-                    moon.receiveShadow = true;
-
-                    const moonGroup = new THREE.Group();
-                    moonGroup.add(moon);
-                    planetGroup.add(moonGroup);
-
-                    moons[moonName] = { mesh: moon, group: moonGroup, data: moonData_item };
-                }
-            });
-        }
-
-        solarSystemGroup.add(planetGroup);
-        planets[planetName] = { mesh: planet, group: planetGroup, data: data };
-    });
-}
-
-// Create improved orbits with better visibility
-function createOrbits() {
-    Object.keys(planetData).forEach(planetName => {
-        const data = planetData[planetName];
-        const orbitGeometry = new THREE.RingGeometry(data.distance - 0.2, data.distance + 0.2, 128);
-        const orbitMaterial = new THREE.MeshBasicMaterial({
-            color: 0x888888,
-            side: THREE.DoubleSide,
+    // Special handling for Earth (add clouds)
+    if (name === 'earth' && loadedTextures.earthClouds) {
+        const cloudGeometry = new THREE.SphereGeometry(data.size * 5, 32, 32);
+        const cloudMaterial = new THREE.MeshLambertMaterial({
+            map: loadedTextures.earthClouds,
             transparent: true,
-            opacity: 0.5
+            opacity: 0.3
         });
-        const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
-        orbit.rotation.x = Math.PI / 2;
-        solarSystemGroup.add(orbit);
+        const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+        planet.add(clouds);
+        planet.userData.clouds = clouds;
+    }
+
+    // Special handling for Saturn (add rings)
+    if (name === 'saturn') {
+        const ringGeometry = new THREE.RingGeometry(data.size * 20, data.size * 3.5, 32);
+        const ringMaterial = new THREE.MeshLambertMaterial({
+            map: loadedTextures.ring,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        const rings = new THREE.Mesh(ringGeometry, ringMaterial);
+        rings.rotation.x = Math.PI / 2;
+        planet.add(rings);
+    }
+}
+
+// Create a moon
+function createMoon(planetName, moonInfo) {
+    const geometry = new THREE.SphereGeometry(moonInfo.size * 15, 16, 16);
+    let material;
+
+    if (loadedTextures[moonInfo.name]) {
+        material = new THREE.MeshLambertMaterial({ map: loadedTextures[moonInfo.name] });
+    } else {
+        material = new THREE.MeshLambertMaterial({ color: moonInfo.color });
+    }
+
+    const moon = new THREE.Mesh(geometry, material);
+    moon.userData = {
+        name: moonInfo.name,
+        distance: moonInfo.distance,
+        speed: moonInfo.speed,
+        angle: Math.random() * Math.PI * 2,
+        parent: planetName
+    };
+
+    if (!moons[planetName]) {
+        moons[planetName] = [];
+    }
+    moons[planetName].push(moon);
+    solarSystemGroup.add(moon);
+}
+
+// Create a dwarf planet
+function createDwarfPlanet(name, data) {
+    const geometry = new THREE.SphereGeometry(data.size * 50, 16, 16);
+    let material;
+
+    if (loadedTextures[name]) {
+        material = new THREE.MeshLambertMaterial({ map: loadedTextures[name] });
+    } else {
+        material = new THREE.MeshLambertMaterial({ color: data.color });
+    }
+
+    const dwarfPlanet = new THREE.Mesh(geometry, material);
+
+    // Apply orbital inclination
+    const inclinationRad = (data.inclination || 0) * Math.PI / 180;
+    const angle = Math.random() * Math.PI * 2;
+
+    dwarfPlanet.position.x = Math.cos(angle) * data.distance * 200; // Increased from 30 to 200
+    dwarfPlanet.position.z = Math.sin(angle) * data.distance * 200;
+    dwarfPlanet.position.y = Math.sin(inclinationRad) * data.distance * 50; // Increased from 15 to 50 for more visible inclination
+
+    dwarfPlanet.userData = {
+        name,
+        originalDistance: data.distance * 200, // Updated to match
+        speed: data.speed,
+        angle: angle,
+        type: data.type,
+        inclination: inclinationRad,
+        eccentricity: data.eccentricity || 0
+    };
+
+    dwarfPlanets[name] = dwarfPlanet;
+    solarSystemGroup.add(dwarfPlanet);
+}
+
+// Create orbital paths
+function createOrbits() {
+    // Planet orbits (with inclinations)
+    for (let planetName in planetData) {
+        const data = planetData[planetName];
+        const points = [];
+        const radius = data.distance * 200; // Increased from 30 to 200
+        const inclinationRad = (data.inclination || 0) * Math.PI / 180;
+
+        for (let i = 0; i <= 128; i++) {
+            const angle = (i / 128) * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const y = Math.sin(angle) * Math.sin(inclinationRad) * radius * 0.05; // Smaller height factor for planets
+
+            points.push(new THREE.Vector3(x, y, z));
+        }
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.6,
+            linewidth: 5
+        });
+
+        const orbit = new THREE.Line(geometry, material);
         orbits.push(orbit);
-    });
-}
-
-// Update keyboard controls to add space and ctrl
-function addKeyboardControls() {
-    document.addEventListener('keydown', (e) => {
-        const key = e.key.toLowerCase();
-        if (key === ' ') {
-            keys.space = true;
-            e.preventDefault();
-        } else if (key === 'control') {
-            keys.control = true;
-            e.preventDefault();
-        } else if (keys.hasOwnProperty(key)) {
-            keys[key] = true;
-            e.preventDefault();
-        }
-    });
-
-    document.addEventListener('keyup', (e) => {
-        const key = e.key.toLowerCase();
-        if (key === ' ') {
-            keys.space = false;
-            e.preventDefault();
-        } else if (key === 'control') {
-            keys.control = false;
-            e.preventDefault();
-        } else if (keys.hasOwnProperty(key)) {
-            keys[key] = false;
-            e.preventDefault();
-        }
-    });
-}
-
-// Update camera movement with vertical controls
-function updateCameraMovement() {
-    if (currentFocus) return; // Don't move camera when focusing on a planet
-
-    const cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
-
-    const cameraRight = new THREE.Vector3();
-    cameraRight.crossVectors(cameraDirection, camera.up).normalize();
-
-    const cameraUp = new THREE.Vector3();
-    cameraUp.crossVectors(cameraRight, cameraDirection).normalize();
-
-    const moveVector = new THREE.Vector3();
-
-    // Adjust camera speed based on current scale for better navigation
-    const scaleInfo = scaleData[currentScale];
-    const adjustedSpeed = cameraSpeed * (scaleInfo.cameraDistance / 150); // Scale speed with distance
-
-    if (keys.w) {
-        moveVector.add(cameraDirection.clone().multiplyScalar(adjustedSpeed));
-    }
-    if (keys.s) {
-        moveVector.add(cameraDirection.clone().multiplyScalar(-adjustedSpeed));
-    }
-    if (keys.a) {
-        moveVector.add(cameraRight.clone().multiplyScalar(-adjustedSpeed));
-    }
-    if (keys.d) {
-        moveVector.add(cameraRight.clone().multiplyScalar(adjustedSpeed));
-    }
-    // Add up/down movement
-    if (keys.space) {
-        moveVector.add(new THREE.Vector3(0, adjustedSpeed, 0));
-    }
-    if (keys.control) {
-        moveVector.add(new THREE.Vector3(0, -adjustedSpeed, 0));
+        solarSystemGroup.add(orbit);
     }
 
-    camera.position.add(moveVector);
-}
+    // Dwarf planet orbits (elliptical with high inclinations)
+    for (let dwarfName in dwarfPlanetData) {
+        const data = dwarfPlanetData[dwarfName];
+        const points = [];
+        const semiMajorAxis = data.distance * 200;
+        const eccentricity = data.eccentricity || 0;
+        const semiMinorAxis = semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity);
+        const inclinationRad = (data.inclination || 0) * Math.PI / 180;
 
-function addMouseControls() {
-    let isDragging = false;
-    let previousMousePosition = { x: 0, y: 0 };
+        for (let i = 0; i <= 128; i++) {
+            const angle = (i / 128) * Math.PI * 2;
+            
+            // Calculate elliptical orbit
+            const r = (semiMajorAxis * (1 - eccentricity * eccentricity)) / 
+                      (1 + eccentricity * Math.cos(angle));
+            
+            const x = r * Math.cos(angle);
+            const z = r * Math.sin(angle);
+            
+            // Apply significant inclination
+            const y = Math.sin(angle) * Math.sin(inclinationRad) * semiMajorAxis * 0.3; // Increased from 0.1 to 0.3
 
-    renderer.domElement.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        previousMousePosition = { x: e.clientX, y: e.clientY };
-    });
-
-    renderer.domElement.addEventListener('mousemove', (e) => {
-        if (isDragging && !currentFocus) {
-            const deltaMove = {
-                x: e.clientX - previousMousePosition.x,
-                y: e.clientY - previousMousePosition.y
-            };
-
-            const spherical = new THREE.Spherical();
-            spherical.setFromVector3(camera.position);
-
-            spherical.theta -= deltaMove.x * 0.01;
-            spherical.phi += deltaMove.y * 0.01;
-            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
-
-            camera.position.setFromSpherical(spherical);
-            camera.lookAt(0, 0, 0);
-        }
-        previousMousePosition = { x: e.clientX, y: e.clientY };
-    });
-
-    renderer.domElement.addEventListener('mouseup', () => {
-        isDragging = false;
-    });
-
-    renderer.domElement.addEventListener('wheel', (e) => {
-        if (!currentFocus) {
-            const distance = camera.position.length();
-            const newDistance = distance + e.deltaY * 0.1;
-            const clampedDistance = Math.max(10, Math.min(500, newDistance));
-
-            camera.position.normalize().multiplyScalar(clampedDistance);
-        }
-    });
-}
-
-// Update the animate function with improved planet following
-function animate() {
-    requestAnimationFrame(animate);
-
-    const time = Date.now() * 0.001 * timeSpeed;
-    galaxyTime += 0.001 * timeSpeed;
-
-    // Update camera movement based on keyboard input
-    updateCameraMovement();
-
-    // Rotate sun
-    if (sun) {
-        sun.rotation.y += 0.01 * timeSpeed;
-    }
-
-    // Move solar system through galaxy
-    solarSystemGroup.position.x = Math.sin(galaxyTime * 0.1) * 5;
-    solarSystemGroup.position.z = Math.cos(galaxyTime * 0.1) * 5;
-    solarSystemGroup.rotation.y += 0.001 * timeSpeed;
-
-    // Animate planets
-    Object.keys(planets).forEach(planetName => {
-        const planet = planets[planetName];
-        const data = planet.data;
-
-        // Orbital motion
-        const angle = time * data.speed * 0.1;
-        planet.group.position.x = Math.cos(angle) * data.distance;
-        planet.group.position.z = Math.sin(angle) * data.distance;
-
-        // Planet rotation
-        planet.mesh.rotation.y += data.rotationSpeed * 0.02 * timeSpeed;
-
-        // Update Earth shader for day/night cycle if it exists
-        if (planetName === 'earth' && planet.mesh.material.uniforms) {
-            const sunDirection = new THREE.Vector3();
-            sunDirection.subVectors(solarSystemGroup.position, planet.group.position).normalize();
-            planet.mesh.material.uniforms.sunDirection.value = sunDirection;
+            points.push(new THREE.Vector3(x, y, z));
         }
 
-        // Animate moons
-        data.moons.forEach(moonName => {
-            if (moons[moonName]) {
-                const moon = moons[moonName];
-                const moonAngle = time * moon.data.speed * 0.2;
-                moon.group.rotation.y = moonAngle;
-            }
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.6,
+            linewidth: 5
         });
+
+        const orbit = new THREE.Line(geometry, material);
+        dwarfOrbits.push(orbit);
+        solarSystemGroup.add(orbit);
+    }
+}
+
+// Create asteroid belt
+function createAsteroidBelt() {
+    const asteroidCount = 3000; // Increased from 500
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(asteroidCount * 3);
+
+    for (let i = 0; i < asteroidCount; i++) {
+        const distance = 11.0 + Math.random() * 6.0; // Between Mars and Jupiter (scaled up)
+        const angle = Math.random() * Math.PI * 2;
+        const height = (Math.random() - 0.5) * 20; // Increased height variation
+
+        positions[i * 3] = Math.cos(angle) * distance * 200; // Increased from 30 to 200
+        positions[i * 3 + 1] = height;
+        positions[i * 3 + 2] = Math.sin(angle) * distance * 200;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+        color: 0x888888,
+        size: 2.5,
+        sizeAttenuation: false
     });
 
-    // Animate particle systems and dwarf planets
-    animateParticleSystems(time);
+    asteroidBelt = new THREE.Points(geometry, material);
+    solarSystemGroup.add(asteroidBelt);
+}
 
-    if (currentFocus) {
-        let targetPosition = new THREE.Vector3();
+// Create kuiper belt
+function createKuiperBelt() {
+    const kuiperCount = 150000; // Increased from 100000
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(kuiperCount * 3);
 
-        if (currentFocus === 'sun') {
-            targetPosition.copy(solarSystemGroup.position);
+    for (let i = 0; i < kuiperCount; i++) {
+        const distance = 150 + Math.random() * 400; // Extended range beyond Neptune (scaled up)
+        const angle = Math.random() * Math.PI * 2;
+        const height = (Math.random() - 0.5) * 30; // Increased height variation
 
-            // Fixed offset for sun
-            const fixedOffset = new THREE.Vector3(0, 5, 15);
-            camera.position.copy(targetPosition).add(fixedOffset);
-            camera.lookAt(targetPosition);
-        } else if (planets[currentFocus]) {
-            const planet = planets[currentFocus];
-            // Get the world position of the planet
-            const planetWorldPos = planet.group.getWorldPosition(new THREE.Vector3());
+        positions[i * 3] = Math.cos(angle) * distance * 200; // Increased from 30 to 200
+        positions[i * 3 + 1] = height;
+        positions[i * 3 + 2] = Math.sin(angle) * distance * 200;
+    }
 
-            // Fixed offset for planet (no rotation around)
-            const viewDistance = Math.max(planet.data.size * 8, 8);
-            const offset = new THREE.Vector3(0, planet.data.size * 3, viewDistance);
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-            camera.position.copy(planetWorldPos).add(offset);
-            camera.lookAt(planetWorldPos);
-        } else if (dwarfPlanets[currentFocus]) {
-            const dwarfPlanet = dwarfPlanets[currentFocus];
-            // Get the world position of the dwarf planet
-            const dwarfPlanetWorldPos = dwarfPlanet.group.getWorldPosition(new THREE.Vector3());
+    const material = new THREE.PointsMaterial({
+        color: 0x444466,
+        size: 2.0,
+        sizeAttenuation: false
+    });
 
-            // Fixed offset for dwarf planet
-            const viewDistance = Math.max(dwarfPlanet.data.size * 12, 6);
-            const offset = new THREE.Vector3(0, dwarfPlanet.data.size * 4, viewDistance);
+    kuiperBelt = new THREE.Points(geometry, material);
+    solarSystemGroup.add(kuiperBelt);
+}
 
-            camera.position.copy(dwarfPlanetWorldPos).add(offset);
-            camera.lookAt(dwarfPlanetWorldPos);
+// Create 3D preview sphere for info panel
+function createPreviewSphere() {
+    // Create preview scene
+    previewScene = new THREE.Scene();
+    
+    // Create preview camera
+    previewCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    previewCamera.position.set(0, 0, 3);
+    
+    // Create preview renderer
+    previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    previewRenderer.setSize(150, 150);
+    previewRenderer.setClearColor(0x000000, 0);
+    
+    // Create container for preview
+    previewContainer = document.createElement('div');
+    previewContainer.id = 'preview-container';
+    previewContainer.style.cssText = `
+        width: 150px;
+        height: 150px;
+        margin: 10px auto;
+        border: 2px solid #444;
+        border-radius: 75px;
+        overflow: hidden;
+        background: radial-gradient(circle, #111 0%, #000 100%);
+    `;
+    previewContainer.appendChild(previewRenderer.domElement);
+    
+    // Add lighting to preview scene
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    previewScene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    previewScene.add(directionalLight);
+}
+
+// Update preview sphere with object data
+function updatePreviewSphere(objectName, objectData) {
+    if (!previewScene) createPreviewSphere();
+    
+    // Remove existing sphere
+    if (previewSphere) {
+        previewScene.remove(previewSphere);
+        previewSphere = null;
+    }
+    
+    // Create new sphere based on object type
+    let geometry, material;
+    let size = 1; // Standard size for preview
+    
+    if (objectName === 'sun') {
+        geometry = new THREE.SphereGeometry(size, 32, 32);
+        if (loadedTextures.sun) {
+            material = new THREE.MeshBasicMaterial({
+                map: loadedTextures.sun,
+                emissive: 0x332200
+            });
+        } else {
+            material = new THREE.MeshBasicMaterial({
+                color: 0xFFAA00,
+                emissive: 0x332200
+            });
+        }
+    } else if (planets[objectName]) {
+        geometry = new THREE.SphereGeometry(size, 32, 32);
+        if (loadedTextures[objectName]) {
+            material = new THREE.MeshLambertMaterial({ map: loadedTextures[objectName] });
+        } else {
+            material = new THREE.MeshLambertMaterial({ color: objectData.color });
+        }
+        
+        // Special handling for Saturn rings in preview
+        if (objectName === 'saturn') {
+            const ringGeometry = new THREE.RingGeometry(size * 1.2, size * 1.8, 32);
+            const ringMaterial = new THREE.MeshLambertMaterial({
+                map: loadedTextures.ring,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+            const rings = new THREE.Mesh(ringGeometry, ringMaterial);
+            rings.rotation.x = Math.PI / 2;
+            previewSphere = new THREE.Group();
+            const planet = new THREE.Mesh(geometry, material);
+            previewSphere.add(planet);
+            previewSphere.add(rings);
+        }
+    } else if (dwarfPlanets[objectName]) {
+        geometry = new THREE.SphereGeometry(size, 24, 24);
+        if (loadedTextures[objectName]) {
+            material = new THREE.MeshLambertMaterial({ map: loadedTextures[objectName] });
+        } else {
+            material = new THREE.MeshLambertMaterial({ color: objectData.color });
         }
     }
-    // Render the scene        
-    renderer.render(scene, camera);
-}
-
-function setTimeSpeed(speed) {
-    timeSpeed = speed;
-
-    // Update button states
-    document.querySelectorAll('.speed-controls button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-}
-
-// Update focusPlanet function with toggle functionality
-function focusPlanet(planetName) {
-    // If already focusing on this planet, toggle focus off
-    if (currentFocus === planetName) {
-        resetCamera();
-        return;
+    
+    // Create sphere if not already created (for Saturn)
+    if (!previewSphere) {
+        previewSphere = new THREE.Mesh(geometry, material);
     }
-
-    currentFocus = planetName;
-    document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
-
-    // Update button states
-    document.querySelectorAll('.planet-controls button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-
-    // Show planet information
-    updatePlanetInfo(planetName);
+    
+    previewScene.add(previewSphere);
 }
 
+// Animate preview sphere
+function animatePreviewSphere() {
+    if (previewSphere && previewRenderer) {
+        // Rotate sphere slowly
+        if (previewSphere.rotation !== undefined) {
+            previewSphere.rotation.y += 0.01;
+        }
+        
+        // Render preview
+        previewRenderer.render(previewScene, previewCamera);
+    }
+}
 
-// Update resetCamera function to also hide planet info
-function resetCamera() {
-    currentFocus = null;
+// Set up event listeners
+function setupEventListeners() {
+    // Keyboard events
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
 
-    // Reset camera based on current scale
-    const scaleInfo = scaleData[currentScale];
-    const distance = scaleInfo.cameraDistance;
+    // Mouse events
+    renderer.domElement.addEventListener('mousedown', onMouseDown);
+    renderer.domElement.addEventListener('mousemove', onMouseMove);
+    renderer.domElement.addEventListener('mouseup', onMouseUp);
+    renderer.domElement.addEventListener('wheel', onMouseWheel);
 
-    camera.position.set(0, distance * 0.3, distance);
+    // Window resize
+    window.addEventListener('resize', onWindowResize);
+}
+
+// Keyboard event handlers
+function onKeyDown(event) {
+    switch (event.code) {
+        case 'KeyW': keys.w = true; break;
+        case 'KeyA': keys.a = true; break;
+        case 'KeyS': keys.s = true; break;
+        case 'KeyD': keys.d = true; break;
+        case 'Space': keys.space = true; event.preventDefault(); break;
+        case 'ControlLeft': keys.ctrl = true; break;
+        case 'ShiftLeft': keys.shift = true; break;
+    }
+}
+
+function onKeyUp(event) {
+    switch (event.code) {
+        case 'KeyW': keys.w = false; break;
+        case 'KeyA': keys.a = false; break;
+        case 'KeyS': keys.s = false; break;
+        case 'KeyD': keys.d = false; break;
+        case 'Space': keys.space = false; break;
+        case 'ControlLeft': keys.ctrl = false; break;
+        case 'ShiftLeft': keys.shift = false; break;
+    }
+}
+
+// Mouse event handlers
+function onMouseDown(event) {
+    mouseDown = true;
+    mouseX = event.clientX;
+    mouseY = event.clientY;
+}
+
+function onMouseMove(event) {
+    if (!mouseDown) return;
+
+    const deltaX = event.clientX - mouseX;
+    const deltaY = event.clientY - mouseY;
+
+    // Rotate camera around target
+    const spherical = new THREE.Spherical();
+    spherical.setFromVector3(camera.position);
+
+    spherical.theta -= deltaX * 0.01;
+    spherical.phi += deltaY * 0.01;
+    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+
+    camera.position.setFromSpherical(spherical);
     camera.lookAt(0, 0, 0);
 
-    document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
-
-    // Remove active state from planet buttons
-    document.querySelectorAll('.planet-controls button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-
-    // Hide planet info panel
-    if (planetInfoPanel) {
-        planetInfoPanel.style.display = 'none';
-    }
+    mouseX = event.clientX;
+    mouseY = event.clientY;
 }
 
-function toggleOrbits() {
-    const show = document.getElementById('showOrbits').checked;
-    orbits.forEach(orbit => {
-        orbit.visible = show;
-    });
-    // Also toggle dwarf planet orbits
-    dwarfPlanetOrbits.forEach(orbit => {
-        orbit.visible = show;
-    });
+function onMouseUp() {
+    mouseDown = false;
 }
 
-function toggleMoons() {
-    const show = document.getElementById('showMoons').checked;
-    Object.values(moons).forEach(moon => {
-        moon.mesh.visible = show;
-    });
+function onMouseWheel(event) {
+    const distance = camera.position.length();
+    const factor = event.deltaY > 0 ? 1.1 : 0.9;
+    const newDistance = Math.max(300, Math.min(20000, distance * factor)); // Increased limits for larger system
+
+    camera.position.normalize().multiplyScalar(newDistance);
 }
 
 function onWindowResize() {
@@ -889,456 +681,317 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// Create asteroid belt as particle system
-function createAsteroidBelt() {
-    const asteroidCount = 1000;
-    const asteroidGeometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(asteroidCount * 3);
-    const colors = new Float32Array(asteroidCount * 3);
-    const sizes = new Float32Array(asteroidCount);
+// Handle camera movement
+function handleCameraMovement() {
+    // Apply speed boost if shift is held
+    const baseSpeed = movementSpeed;
+    const speed = keys.shift ? baseSpeed * 2 : baseSpeed;
 
-    for (let i = 0; i < asteroidCount; i++) {
-        // Create ring between Mars and Jupiter (distance 35-55)
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 40 + Math.random() * 10; // Between Mars and Jupiter
-        const height = (Math.random() - 0.5) * 2; // Small vertical spread
+    const direction = new THREE.Vector3();
 
-        positions[i * 3] = Math.cos(angle) * radius;
-        positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * radius;
-
-        // Rocky grey to reddish-brown
-        colors[i * 3] = 0.4 + Math.random() * 0.3;     // Red
-        colors[i * 3 + 1] = 0.3 + Math.random() * 0.2; // Green
-        colors[i * 3 + 2] = 0.2 + Math.random() * 0.2; // Blue
-
-
-        // Size variation
-        sizes[i] = 0.1 + Math.random();
-    }
-
-    asteroidGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    asteroidGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    asteroidGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-    const asteroidMaterial = new THREE.PointsMaterial({
-        size: 0.8,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.8,
-        sizeAttenuation: true
-    });
-
-    asteroidBelt = new THREE.Points(asteroidGeometry, asteroidMaterial);
-    solarSystemGroup.add(asteroidBelt);
-}
-
-// Create Kuiper belt as particle system
-function createKuiperBelt() {
-    const kuiperCount = 20000;
-    const kuiperGeometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(kuiperCount * 3);
-    const colors = new Float32Array(kuiperCount * 3);
-    const sizes = new Float32Array(kuiperCount);
-
-    for (let i = 0; i < kuiperCount; i++) {
-        // Create belt beyond Neptune (distance 150-400)
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 150 + Math.random() * 250; // Beyond Neptune
-        const height = (Math.random() - 0.5) * 8; // Slightly larger vertical spread
-
-        positions[i * 3] = Math.cos(angle) * radius;
-        positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * radius;
-
-        // Darker/bluish colors
-        colors[i * 3] = 0.3 + Math.random() * 0.3;     // Red
-        colors[i * 3 + 1] = 0.4 + Math.random() * 0.3; // Green
-        colors[i * 3 + 2] = 0.7 + Math.random() * 0.3; // Blue
-
-        // Size variation
-        sizes[i] = 0.3 + Math.random() * 1.2;
-    }
-
-    kuiperGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    kuiperGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    kuiperGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-    const kuiperMaterial = new THREE.PointsMaterial({
-        size: 0.6,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.6,
-        sizeAttenuation: true
-    });
-
-    kuiperBelt = new THREE.Points(kuiperGeometry, kuiperMaterial);
-    solarSystemGroup.add(kuiperBelt);
-}
-
-// Create Oort Cloud as spherical particle system
-// Function to create dwarf planets with elliptical orbits
-function createDwarfPlanets() {
-    Object.keys(dwarfPlanetData).forEach(planetName => {
-        const data = dwarfPlanetData[planetName];
-
-        // Create dwarf planet group
-        const dwarfPlanetGroup = new THREE.Group();
-
-        // Create dwarf planet mesh
-        const geometry = new THREE.SphereGeometry(data.size, 32, 32);
-        let material;
-
-        if (loadedTextures[planetName]) {
-            material = new THREE.MeshLambertMaterial({
-                map: loadedTextures[planetName]
-            });
-        } else {
-            material = new THREE.MeshLambertMaterial({ color: data.color });
+    if (currentFocus) {
+        // When focusing, move relative to the focused object
+        let target;
+        if (currentFocus === 'sun') {
+            target = sun;
+        } else if (planets[currentFocus]) {
+            target = planets[currentFocus];
+        } else if (dwarfPlanets[currentFocus]) {
+            target = dwarfPlanets[currentFocus];
         }
 
-        const dwarfPlanet = new THREE.Mesh(geometry, material);
-        dwarfPlanet.castShadow = true;
-        dwarfPlanet.receiveShadow = true;
+        if (target) {
+            // Calculate movement direction based on camera orientation
+            camera.getWorldDirection(direction);
+            const right = new THREE.Vector3().crossVectors(direction, camera.up).normalize();
+            const up = camera.up.clone();
 
-        dwarfPlanetGroup.add(dwarfPlanet);
+            // Store the current offset from target
+            const currentOffset = camera.position.clone().sub(target.position);
 
-        // Set initial position
-        dwarfPlanetGroup.position.x = data.semiMajorAxis;
+            // Apply movement to the offset
+            if (keys.w) currentOffset.add(direction.multiplyScalar(speed));
+            if (keys.s) currentOffset.add(direction.multiplyScalar(-speed));
+            if (keys.a) currentOffset.add(right.multiplyScalar(-speed));
+            if (keys.d) currentOffset.add(right.multiplyScalar(speed));
+            if (keys.space) currentOffset.add(up.multiplyScalar(speed));
+            if (keys.ctrl) currentOffset.add(up.multiplyScalar(-speed));
 
-        solarSystemGroup.add(dwarfPlanetGroup);
-        dwarfPlanets[planetName] = {
-            mesh: dwarfPlanet,
-            group: dwarfPlanetGroup,
-            data: data,
-            angle: Math.random() * Math.PI * 2 // Random starting angle
-        };
-
-        // Create elliptical orbit visualization
-        createEllipticalOrbit(
-            data.semiMajorAxis,
-            data.eccentricity,
-            data.inclination,
-            data.longitudeOfAscendingNode || 0,
-            data.argumentOfPeriapsis || 0
-        );
-    });
-}
-
-// Function to create elliptical orbit visualization
-function createEllipticalOrbit(semiMajorAxis, eccentricity, inclination, longitudeOfAscendingNode = 0, argumentOfPeriapsis = 0) {
-    const points = [];
-    const segments = 128;
-
-    for (let i = 0; i <= segments; i++) {
-        const trueAnomaly = (i / segments) * Math.PI * 2;
-        const radius = semiMajorAxis * (1 - eccentricity * eccentricity) / (1 + eccentricity * Math.cos(trueAnomaly));
-
-        // Calculate position in orbital plane
-        const orbitalX = radius * Math.cos(trueAnomaly);
-        const orbitalY = radius * Math.sin(trueAnomaly);
-
-        // Apply orbital transformations
-        const cosLongitude = Math.cos(longitudeOfAscendingNode);
-        const sinLongitude = Math.sin(longitudeOfAscendingNode);
-        const cosArgument = Math.cos(argumentOfPeriapsis);
-        const sinArgument = Math.sin(argumentOfPeriapsis);
-        const cosInclination = Math.cos(inclination);
-        const sinInclination = Math.sin(inclination);
-
-        const x = orbitalX * (cosLongitude * cosArgument - sinLongitude * sinArgument * cosInclination) +
-            orbitalY * (-cosLongitude * sinArgument - sinLongitude * cosArgument * cosInclination);
-        const y = orbitalX * (sinLongitude * cosArgument + cosLongitude * sinArgument * cosInclination) +
-            orbitalY * (-sinLongitude * sinArgument + cosLongitude * cosArgument * cosInclination);
-        const z = orbitalX * (sinArgument * sinInclination) +
-            orbitalY * (cosArgument * sinInclination);
-
-        points.push(new THREE.Vector3(x, y, z));
-    }
-
-    const orbitGeometry = new THREE.BufferGeometry().setFromPoints(points);
-    const orbitMaterial = new THREE.LineBasicMaterial({
-        color: 0x666666,
-        transparent: true,
-        opacity: 0.4
-    });
-
-    const orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
-    solarSystemGroup.add(orbitLine);
-    dwarfPlanetOrbits.push(orbitLine);
-}
-
-// Function to calculate elliptical orbit position
-function calculateEllipticalPosition(semiMajorAxis, eccentricity, inclination, meanAnomaly, longitudeOfAscendingNode = 0, argumentOfPeriapsis = 0) {
-    // Solve Kepler's equation
-    const eccentricAnomaly = solveKepler(meanAnomaly, eccentricity);
-    const trueAnomaly = 2 * Math.atan(Math.sqrt((1 + eccentricity) / (1 - eccentricity)) * Math.tan(eccentricAnomaly / 2));
-
-    const radius = semiMajorAxis * (1 - eccentricity * eccentricity) / (1 + eccentricity * Math.cos(trueAnomaly));
-
-    // Calculate position in orbital plane
-    const orbitalX = radius * Math.cos(trueAnomaly);
-    const orbitalY = radius * Math.sin(trueAnomaly);
-
-    // Apply orbital transformations
-    const cosLongitude = Math.cos(longitudeOfAscendingNode);
-    const sinLongitude = Math.sin(longitudeOfAscendingNode);
-    const cosArgument = Math.cos(argumentOfPeriapsis);
-    const sinArgument = Math.sin(argumentOfPeriapsis);
-    const cosInclination = Math.cos(inclination);
-    const sinInclination = Math.sin(inclination);
-
-    const x = orbitalX * (cosLongitude * cosArgument - sinLongitude * sinArgument * cosInclination) +
-        orbitalY * (-cosLongitude * sinArgument - sinLongitude * cosArgument * cosInclination);
-    const y = orbitalX * (sinLongitude * cosArgument + cosLongitude * sinArgument * cosInclination) +
-        orbitalY * (-sinLongitude * sinArgument + cosLongitude * cosArgument * cosInclination);
-    const z = orbitalX * (sinArgument * sinInclination) +
-        orbitalY * (cosArgument * sinInclination);
-
-    return new THREE.Vector3(x, y, z);
-}
-
-// Kepler's equation solver (improved with better convergence)
-function solveKepler(meanAnomaly, eccentricity) {
-    let eccentricAnomaly = meanAnomaly;
-    
-    // Handle edge cases
-    if (eccentricity === 0) return meanAnomaly; // Circular orbit
-    if (eccentricity >= 1) return meanAnomaly; // Invalid eccentricity for elliptical orbit
-
-    // Newton-Raphson iteration with better convergence
-    for (let i = 0; i < 10; i++) { // Increased iterations for better accuracy
-        const f = eccentricAnomaly - eccentricity * Math.sin(eccentricAnomaly) - meanAnomaly;
-        const fp = 1 - eccentricity * Math.cos(eccentricAnomaly);
-        
-        if (Math.abs(fp) < 1e-12) break; // Avoid division by zero
-        
-        const delta = f / fp;
-        eccentricAnomaly -= delta;
-        
-        if (Math.abs(delta) < 1e-12) break; // Convergence achieved
-    }
-
-    return eccentricAnomaly;
-}
-
-// Create galactic structures
-function createGalacticStructures() {
-    galaxyGroup = new THREE.Group();
-
-    // Create Milky Way background plane (if texture is available)
-    createMilkyWayBackground();
-
-    scene.add(galaxyGroup);
-    galaxyGroup.visible = false; // Initially hidden
-}
-
-// Create Milky Way background plane with texture
-function createMilkyWayBackground() {
-    const milkyWayGeometry = new THREE.PlaneGeometry(20000, 20000);
-    
-    let milkyWayMaterial;
-    if (loadedTextures.milkyWay) {
-        milkyWayMaterial = new THREE.MeshBasicMaterial({
-            map: loadedTextures.milkyWay,
-            transparent: true,
-            opacity: 0.3,
-            side: THREE.DoubleSide
-        });
+            // Update camera position to maintain the new offset
+            camera.position.copy(target.position).add(currentOffset);
+            camera.lookAt(target.position);
+        }
     } else {
-        // Fallback gradient material
-        milkyWayMaterial = new THREE.MeshBasicMaterial({
-            color: 0x221122,
-            transparent: true,
-            opacity: 0.2,
-            side: THREE.DoubleSide
+        // Free camera movement (existing code)
+        camera.getWorldDirection(direction);
+        const right = new THREE.Vector3().crossVectors(direction, camera.up).normalize();
+        const up = camera.up.clone();
+
+        if (keys.w) camera.position.add(direction.multiplyScalar(speed));
+        if (keys.s) camera.position.add(direction.multiplyScalar(-speed));
+        if (keys.a) camera.position.add(right.multiplyScalar(-speed));
+        if (keys.d) camera.position.add(right.multiplyScalar(speed));
+        if (keys.space) camera.position.add(up.multiplyScalar(speed));
+        if (keys.ctrl) camera.position.add(up.multiplyScalar(-speed));
+    }
+}
+
+// Update planetary positions
+function updatePlanets() {
+    if (isPaused) return; // Don't update if paused
+
+    // Update planets
+    for (let planetName in planets) {
+        const planet = planets[planetName];
+        const userData = planet.userData;
+
+        // Update orbital position with inclination
+        userData.angle += userData.speed * timeSpeed;
+        planet.position.x = Math.cos(userData.angle) * userData.originalDistance;
+        planet.position.z = Math.sin(userData.angle) * userData.originalDistance;
+
+        // Apply orbital inclination for planets
+        if (userData.inclination) {
+            planet.position.y = Math.sin(userData.angle) * Math.sin(userData.inclination) * userData.originalDistance * 0.05;
+        }
+
+        // Rotate planet (slower rotation)
+        planet.rotation.y += 0.005 * timeSpeed;
+
+        // Special handling for Earth clouds
+        if (userData.clouds) {
+            userData.clouds.rotation.y += 0.003 * timeSpeed;
+        }
+    }
+
+    // Update dwarf planets (with elliptical orbits)
+    for (let dwarfName in dwarfPlanets) {
+        const dwarf = dwarfPlanets[dwarfName];
+        const userData = dwarf.userData;
+        const data = dwarfPlanetData[dwarfName];
+
+        // Update orbital position
+        userData.angle += userData.speed * timeSpeed;
+        
+        // Calculate elliptical orbit
+        const eccentricity = userData.eccentricity || 0;
+        const semiMajorAxis = userData.originalDistance;
+        const r = (semiMajorAxis * (1 - eccentricity * eccentricity)) / 
+                  (1 + eccentricity * Math.cos(userData.angle));
+
+        dwarf.position.x = r * Math.cos(userData.angle);
+        dwarf.position.z = r * Math.sin(userData.angle);
+
+        // Apply significant orbital inclination
+        if (userData.inclination) {
+            dwarf.position.y = Math.sin(userData.angle) * Math.sin(userData.inclination) * semiMajorAxis * 0.3;
+        }
+
+        // Rotate dwarf planet (slower rotation)
+        dwarf.rotation.y += 0.005 * timeSpeed;
+    }
+
+    // Update moons
+    for (let planetName in moons) {
+        if (planets[planetName]) {
+            const planetPos = planets[planetName].position;
+            moons[planetName].forEach(moon => {
+                moon.userData.angle += moon.userData.speed * timeSpeed;
+                moon.position.x = planetPos.x + Math.cos(moon.userData.angle) * moon.userData.distance * 5; // Scaled up moon distance
+                moon.position.z = planetPos.z + Math.sin(moon.userData.angle) * moon.userData.distance * 5;
+                moon.rotation.y += 0.005 * timeSpeed;
+            });
+        }
+    }
+}
+
+// Update camera focus
+function updateCameraFocus() {
+    if (currentFocus) {
+        let target;
+        if (currentFocus === 'sun') {
+            target = sun;
+        } else if (planets[currentFocus]) {
+            target = planets[currentFocus];
+        } else if (dwarfPlanets[currentFocus]) {
+            target = dwarfPlanets[currentFocus];
+        }
+
+        if (target) {
+            // Only apply automatic following if no keys are pressed
+            const isMoving = keys.w || keys.s || keys.a || keys.d || keys.space || keys.ctrl;
+            
+            if (!isMoving) {
+                // Auto-follow behavior when not manually moving
+                const distance = target === sun ? 500 : 150;
+                const targetPos = target.position.clone();
+                const cameraPos = targetPos.clone().add(new THREE.Vector3(distance, distance * 0.5, distance));
+                
+                camera.position.lerp(cameraPos, 0.05);
+            }
+            
+            // Always look at the target
+            camera.lookAt(target.position);
+
+            // Update planet info display
+            updatePlanetInfoDisplay(currentFocus, target);
+        }
+    }
+}
+
+// Update planet info display
+function updatePlanetInfoDisplay(objectName, object) {
+    const infoElement = document.getElementById('planet-info');
+    if (!infoElement) return;
+
+    let info = '';
+    let objectData = null;
+    
+    if (objectName === 'sun') {
+        objectData = sunData;
+        info = `
+            <h3>Sun</h3>
+            <div id="preview-placeholder"></div>
+            <p><strong>Type:</strong> G-type main-sequence star</p>
+            <p><strong>Temperature:</strong> 5,778 K</p>
+            <p><strong>Radius:</strong> ${sunData.size} Earth radii (compressed)</p>
+            <p><strong>Real:</strong> Actually 109x Earth radii</p>
+        `;
+    } else if (planets[objectName]) {
+        objectData = planetData[objectName];
+        info = `
+            <h3>${objectName.charAt(0).toUpperCase() + objectName.slice(1)}</h3>
+            <div id="preview-placeholder"></div>
+            <p><strong>Type:</strong> Planet</p>
+            <p><strong>Distance:</strong> ${objectData.distance} AU</p>
+            <p><strong>Radius:</strong> ${objectData.size} Earth radii</p>
+            <p><strong>Inclination:</strong> ${objectData.inclination}°</p>
+            <p><strong>Orbital Speed:</strong> ${(objectData.speed * 100).toFixed(1)}% relative</p>
+            <p><strong>Orbit:</strong> Nearly circular</p>
+        `;
+    } else if (dwarfPlanets[objectName]) {
+        objectData = dwarfPlanetData[objectName];
+        const eccentricityDesc = objectData.eccentricity > 0.3 ? 'Highly elliptical' : 
+                                objectData.eccentricity > 0.1 ? 'Moderately elliptical' : 'Mildly elliptical';
+        info = `
+            <h3>${objectName.charAt(0).toUpperCase() + objectName.slice(1)}</h3>
+            <div id="preview-placeholder"></div>
+            <p><strong>Type:</strong> Dwarf Planet</p>
+            <p><strong>Location:</strong> ${objectData.type}</p>
+            <p><strong>Distance:</strong> ${objectData.distance} AU</p>
+            <p><strong>Radius:</strong> ${objectData.size} Earth radii</p>
+            <p><strong>Inclination:</strong> ${objectData.inclination}° ${objectData.inclination > 20 ? '(Highly inclined)' : ''}</p>
+            <p><strong>Eccentricity:</strong> ${objectData.eccentricity} (${eccentricityDesc})</p>
+            <p><strong>Orbit:</strong> ${objectData.eccentricity > 0.2 ? 'Highly elliptical and tilted' : 'Elliptical'}</p>
+        `;
+    }
+
+    infoElement.innerHTML = info;
+    infoElement.style.display = 'block';
+    
+    // Add preview sphere
+    const placeholder = document.getElementById('preview-placeholder');
+    if (placeholder && previewContainer) {
+        placeholder.appendChild(previewContainer);
+        updatePreviewSphere(objectName, objectData);
+    }
+}
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+
+    handleCameraMovement();
+    updatePlanets();
+    updateCameraFocus();
+    
+    // Animate preview sphere
+    animatePreviewSphere();
+
+    renderer.render(scene, camera);
+}
+
+// UI Control Functions
+function setTimeSpeed(speed) {
+    timeSpeed = speed;
+    document.getElementById('timeSpeedValue').textContent = `${speed.toFixed(1)}x`;
+}
+
+function togglePause() {
+    isPaused = !isPaused;
+    const button = document.getElementById('pauseButton');
+    button.textContent = isPaused ? '▶ Play' : '⏸ Pause';
+    button.classList.toggle('active', isPaused);
+}
+
+function setMovementSpeed(speed) {
+    movementSpeed = speed;
+    document.getElementById('movementSpeedValue').textContent = `${speed.toFixed(0)}`;
+}
+
+function focusPlanet(planetName) {
+    currentFocus = planetName;
+    document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
+}
+
+function resetCamera() {
+    currentFocus = null;
+    camera.position.set(0, 500, 1500); // Updated for larger system
+    camera.lookAt(0, 0, 0);
+    document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
+
+    // Hide planet info and preview
+    const infoElement = document.getElementById('planet-info');
+    if (infoElement) {
+        infoElement.style.display = 'none';
+    }
+    
+    // Remove preview sphere from scene
+    if (previewSphere && previewScene) {
+        previewScene.remove(previewSphere);
+        previewSphere = null;
+    }
+}
+
+function toggleOrbits() {
+    const show = document.getElementById('showOrbits').checked;
+    orbits.forEach(orbit => {
+        orbit.visible = show;
+    });
+    dwarfOrbits.forEach(orbit => {
+        orbit.visible = show;
+    });
+}
+
+function toggleMoons() {
+    const show = document.getElementById('showMoons').checked;
+    for (let planetName in moons) {
+        moons[planetName].forEach(moon => {
+            moon.visible = show;
         });
     }
-    
-    const milkyWayPlane = new THREE.Mesh(milkyWayGeometry, milkyWayMaterial);
-    milkyWayPlane.rotation.x = Math.PI / 2; // Lie flat
-    milkyWayPlane.position.y = -50; // Slightly below the main galaxy
-    
-    galaxyGroup.add(milkyWayPlane);
-
-    // Add our solar system as a single point of light in the galaxy edge
-    const solarSystemGeometry = new THREE.SphereGeometry(15, 16, 16);
-    const solarSystemMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffff00,
-        transparent: true,
-        opacity: 0.9
-    });
-
-    const solarSystemPoint = new THREE.Mesh(solarSystemGeometry, solarSystemMaterial);
-    solarSystemPoint.position.set(8000, 0, 2000); // Position at galaxy edge
-    
-    galaxyGroup.add(solarSystemPoint);
 }
 
-// Create our solar system as a single point of light for galactic view
-// Multi-scale zoom system functions
-function changeScale(newScale) {
-    if (newScale < 0 || newScale > 4) return;
-
-    currentScale = newScale;
-    scaleTransitionTime = 0;
-
-    // Update UI
-    const scaleInfo = scaleData[currentScale];
-    document.getElementById('currentScale').textContent = `Scale: ${scaleInfo.name}`;
-
-    // Update scale button states - Fix: Use correct selector for Scale View buttons
-    document.querySelectorAll('.control-group:nth-child(4) .planet-controls button').forEach((btn, index) => {
-        btn.classList.toggle('active', index === currentScale);
-    });
-
-    // Smooth camera transition
-    const targetDistance = scaleInfo.cameraDistance;
-    const currentDistance = camera.position.length();
-
-    // Animate camera zoom
-    const animateZoom = () => {
-        scaleTransitionTime += 0.02;
-        const progress = Math.min(scaleTransitionTime, 1);
-        const easedProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
-
-        const newDistance = currentDistance + (targetDistance - currentDistance) * easedProgress;
-        camera.position.normalize().multiplyScalar(newDistance);
-
-        // Update object visibility based on scale
-        updateObjectVisibility();
-
-        // Show scale-specific info
-        updateScaleInfo();
-
-        if (progress < 1) {
-            requestAnimationFrame(animateZoom);
-        }
-    };
-
-    animateZoom();
-}
-
-// Update object visibility based on current scale
-function updateObjectVisibility() {
-    const scaleInfo = scaleData[currentScale];
-
-    // For scales 0-3: Always show everything (solar system objects)
-    // For scale 4: Show only galactic view
-    const showSolarSystem = !scaleInfo.showGalaxy;
-
-    // Solar system objects (show everything in scales 0-3)
-    solarSystemGroup.visible = showSolarSystem;
-
-    // All planets are always visible in scales 0-3
-    Object.values(planets).forEach(planet => {
-        planet.group.visible = showSolarSystem;
-    });
-
-    // Asteroid belt always visible in scales 0-3
-    if (asteroidBelt) {
-        asteroidBelt.visible = showSolarSystem;
-    }
-
-    // Kuiper belt always visible in scales 0-3
-    if (kuiperBelt) {
-        kuiperBelt.visible = showSolarSystem;
-    }
-
-    // Dwarf planets always visible in scales 0-3
-    Object.values(dwarfPlanets).forEach(dwarf => {
-        dwarf.group.visible = showSolarSystem;
-    });
-
-    // Galaxy structures - only show in galactic view (scale 4)
-    if (galaxyGroup) {
-        galaxyGroup.visible = scaleInfo.showGalaxy;
-    }
-
-    // Scale solar system for distant views
-    if (solarSystemGroup) {
-        solarSystemGroup.scale.setScalar(scaleInfo.scale);
-    }
-}
-
-// Update scale-specific information
-function updateScaleInfo() {
-    const scaleInfo = scaleData[currentScale];
-    let info = `Current Scale: ${scaleInfo.name}`;
-
-    switch (currentScale) {
-        case 0:
-            info += '\nQuick navigation to Inner Solar System view';
-            break;
-        case 1:
-            info += '\nQuick navigation to Outer Solar System view';
-            break;
-        case 2:
-            info += '\nQuick navigation to Kuiper Belt region';
-            break;
-        case 3:
-            info += '\nQuick navigation to Oort Cloud region (using background stars)';
-            break;
-        case 4:
-            info += '\nShowing: Milky Way galaxy background image';
-            break;
-    }
-
-    console.log(info);
-}
-
-// Add animation to particle systems
-function animateParticleSystems(time) {
-    // Animate asteroid belt rotation (particle systems can rotate)
-    if (asteroidBelt) {
-        asteroidBelt.rotation.y += 0.001 * timeSpeed;
-    }
-
-    // Animate Kuiper belt rotation (particle systems can rotate)
-    if (kuiperBelt) {
-        kuiperBelt.rotation.y += 0.0005 * timeSpeed;
-    }
-
-    // Animate galaxy rotation
-    if (galaxyGroup) {
-        galaxyGroup.rotation.y += 0.0001 * timeSpeed;
-    }
-
-    // Animate dwarf planets in elliptical orbits
-    Object.keys(dwarfPlanets).forEach(planetName => {
-        const dwarfPlanet = dwarfPlanets[planetName];
-        const data = dwarfPlanet.data;
-
-        // Update mean anomaly for orbital motion
-        dwarfPlanet.angle += data.speed * 0.01 * timeSpeed;
-
-        // Calculate new position along the FIXED elliptical orbit
-        const position = calculateEllipticalPosition(
-            data.semiMajorAxis,
-            data.eccentricity,
-            data.inclination,
-            dwarfPlanet.angle,
-            data.longitudeOfAscendingNode || 0,
-            data.argumentOfPeriapsis || 0
-        );
-
-        // Move the dwarf planet to the new position
-        dwarfPlanet.group.position.copy(position);
-
-        // Rotate the dwarf planet on its axis (not the orbit!)
-        dwarfPlanet.mesh.rotation.y += data.rotationSpeed * 0.02 * timeSpeed;
-    });
-}
-
-// Add toggle functions for asteroid and Kuiper belts
 function toggleAsteroidBelt() {
+    const show = document.getElementById('showAsteroidBelt').checked;
     if (asteroidBelt) {
-        asteroidBelt.visible = document.getElementById('showAsteroidBelt').checked;
+        asteroidBelt.visible = show;
     }
 }
 
 function toggleKuiperBelt() {
+    const show = document.getElementById('showKuiperBelt').checked;
     if (kuiperBelt) {
-        kuiperBelt.visible = document.getElementById('showKuiperBelt').checked;
+        kuiperBelt.visible = show;
     }
 }
+
+function toggleDwarfPlanets() {
+    const show = document.getElementById('showDwarfPlanets').checked;
+    for (let dwarfName in dwarfPlanets) {
+        dwarfPlanets[dwarfName].visible = show;
+    }
+}
+
+// Initialize when page loads
+window.addEventListener('load', init);

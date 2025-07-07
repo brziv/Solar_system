@@ -56,8 +56,53 @@ button.active {
     color: #000;
 }
 
-.speed-controls button {
-    min-width: 35px;
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.slider-container input[type="range"] {
+    flex: 1;
+    height: 5px;
+    background: #333;
+    outline: none;
+    border-radius: 5px;
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: #ffd700;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.slider-container input[type="range"]::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: #ffd700;
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+.slider-container span {
+    min-width: 40px;
+    font-size: 12px;
+    color: #ffd700;
+}
+
+#pauseButton {
+    width: 100%;
+    margin-top: 5px;
+    background: #666;
+}
+
+#pauseButton.active {
+    background: #ff6b6b;
 }
 
 .planet-controls {
@@ -78,6 +123,35 @@ button.active {
     max-width: 300px;
 }
 
+#planet-info {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    z-index: 100;
+    width: 250px;
+    display: none;
+}
+
+#planet-info h3 {
+    margin: 0 0 10px 0;
+    color: #ffd700;
+    font-size: 16px;
+}
+
+#planet-info p {
+    margin: 5px 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+#planet-info strong {
+    color: #ffd700;
+}
+
 .checkbox-group {
     display: flex;
     align-items: center;
@@ -96,29 +170,4 @@ button.active {
     color: white;
     font-size: 18px;
     z-index: 200;
-}
-
-#planet-info {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 15px;
-    border-radius: 8px;
-    z-index: 100;
-    width: 250px;
-    display: none;
-}
-
-.scale-indicator {
-    position: absolute;
-    top: 50%;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    transform: translateY(-50%);
 }
