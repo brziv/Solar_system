@@ -22,6 +22,8 @@ body {
     border-radius: 8px;
     z-index: 100;
     min-width: 200px;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
 .control-group {
@@ -94,4 +96,29 @@ button.active {
     color: white;
     font-size: 18px;
     z-index: 200;
+}
+
+#planet-info {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    z-index: 100;
+    width: 250px;
+    display: none;
+}
+
+.scale-indicator {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    transform: translateY(-50%);
 }

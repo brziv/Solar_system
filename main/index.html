@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solar System Simulation</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="container">
         <div id="loading">Loading textures...</div>
-        
+
         <div id="controls" style="display: none;">
             <div class="control-group">
                 <h3>Time Speed</h3>
@@ -22,7 +24,7 @@
                     <button onclick="setTimeSpeed(32)">x32</button>
                 </div>
             </div>
-            
+
             <div class="control-group">
                 <h3>Focus Planet</h3>
                 <div class="planet-controls">
@@ -37,7 +39,18 @@
                     <button onclick="focusPlanet('neptune')">Neptune</button>
                 </div>
             </div>
-            
+
+            <div class="control-group">
+                <h3>Focus Dwarf Planets</h3>
+                <div class="planet-controls">
+                    <button onclick="focusPlanet('ceres')">Ceres</button>
+                    <button onclick="focusPlanet('pluto')">Pluto</button>
+                    <button onclick="focusPlanet('eris')">Eris</button>
+                    <button onclick="focusPlanet('haumea')">Haumea</button>
+                    <button onclick="focusPlanet('makemake')">Makemake</button>
+                </div>
+            </div>
+
             <div class="control-group">
                 <h3>View Options</h3>
                 <div class="checkbox-group">
@@ -48,19 +61,35 @@
                     <input type="checkbox" id="showMoons" checked onchange="toggleMoons()">
                     <label for="showMoons">Show Moons</label>
                 </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showAsteroidBelt" checked onchange="toggleAsteroidBelt()">
+                    <label for="showAsteroidBelt">Show Asteroid Belt</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showKuiperBelt" checked onchange="toggleKuiperBelt()">
+                    <label for="showKuiperBelt">Show Kuiper Belt</label>
+                </div>
                 <button onclick="resetCamera()">Reset Camera</button>
             </div>
         </div>
-        
+
         <div id="info" style="display: none;">
             <div>Camera: Free roam (drag to rotate, scroll to zoom, WASD to move)</div>
-            <div>Controls: W=Forward, S=Backward, A=Left, D=Right</div>
+            <div>Controls: W=Forward, S=Backward, A=Left, D=Right, Space=Up, Ctrl=Down</div>
             <div>Galaxy motion: Solar system moves through space</div>
             <div id="currentFocus">Focus: Free Camera</div>
+        </div>
+
+        <div id="planet-info" style="display: none;"></div>
+
+        <div class="scale-indicator">
+            <div id="currentScale">Scale: Solar System</div>
+            <div id="scaleDistance">Distance: 0 AU</div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

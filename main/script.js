@@ -68,6 +68,36 @@ const realPlanetData = {
         orbitPeriod: "164.8 years",
         rotationPeriod: "16.1 hours",
         distance: "30.1 AU"
+    },
+    ceres: {
+        orbitPeriod: "4.6 years",
+        rotationPeriod: "9.1 hours",
+        distance: "2.77 AU",
+        type: "Dwarf planet (asteroid belt)"
+    },
+    pluto: {
+        orbitPeriod: "248 years",
+        rotationPeriod: "6.4 days",
+        distance: "39.5 AU",
+        type: "Dwarf planet (Kuiper belt)"
+    },
+    eris: {
+        orbitPeriod: "558 years",
+        rotationPeriod: "25.9 hours",
+        distance: "67.7 AU",
+        type: "Dwarf planet (scattered disk)"
+    },
+    haumea: {
+        orbitPeriod: "284 years",
+        rotationPeriod: "3.9 hours",
+        distance: "43.3 AU",
+        type: "Dwarf planet (Kuiper belt)"
+    },
+    makemake: {
+        orbitPeriod: "310 years",
+        rotationPeriod: "22.5 hours",
+        distance: "45.8 AU",
+        type: "Dwarf planet (Kuiper belt)"
     }
 };
 
@@ -125,14 +155,18 @@ const texturePaths = {
     earthClouds: 'textures//8k_earth_clouds.jpg',
     earthNormal: 'textures//8k_earth_normal_map.tif',
     earthSpecular: 'textures//8k_earth_specular_map.tif',
+    moon: 'textures//8k_moon.jpg',
+    ceres: 'textures//4k_ceres.jpg',
     mars: 'textures//8k_mars.jpg',
     jupiter: 'textures//8k_jupiter.jpg',
     saturn: 'textures//8k_saturn.jpg',
     saturnRings: 'textures//8k_saturn_ring_alpha.png',
     uranus: 'textures//2k_uranus.jpg',
     neptune: 'textures//2k_neptune.jpg',
-    moon: 'textures//8k_moon.jpg',
-    stars: 'textures//8k_stars_milky_way.jpg'
+    pluto: 'textures//2k_pluto.jpg',
+    eris: 'textures//4k_eris.jpg',
+    haumea: 'textures//4k_haumea.jpg',
+    makemake: 'textures//4k_makemake.jpg',
 };
 
 // Fallback colors for when textures fail to load
@@ -146,7 +180,12 @@ const fallbackColors = {
     saturn: 0xfad5a5,
     uranus: 0x4fd0e4,
     neptune: 0x4b70dd,
-    moon: 0x888888
+    moon: 0x888888,
+    ceres: 0x8c7853,
+    pluto: 0xd4a574,
+    eris: 0xcccccc,
+    haumea: 0xffffff,
+    makemake: 0xd4a574
 };
 
 // Real astronomical data (scaled for visualization)
@@ -159,6 +198,55 @@ const planetData = {
     saturn: { distance: 75, size: 4, speed: 0.034, rotationSpeed: 2.2, color: 0xfad5a5, moons: ['titan', 'enceladus'] },
     uranus: { distance: 95, size: 2, speed: 0.012, rotationSpeed: 1.4, color: 0x4fd0e4, moons: [] },
     neptune: { distance: 115, size: 2, speed: 0.006, rotationSpeed: 1.5, color: 0x4b70dd, moons: [] }
+};
+
+// Dwarf planet data with elliptical orbits
+const dwarfPlanetData = {
+    ceres: {
+        semiMajorAxis: 45,  // Scaled between Mars and Jupiter
+        eccentricity: 0.08,
+        inclination: 0.19,
+        size: 0.3,
+        speed: 0.22,
+        rotationSpeed: 2.6,
+        color: 0x8c7853
+    },
+    pluto: {
+        semiMajorAxis: 200,
+        eccentricity: 0.25,
+        inclination: 0.3,  // 17 degrees in radians
+        size: 0.18,
+        speed: 0.004,
+        rotationSpeed: 0.16,
+        color: 0xd4a574
+    },
+    eris: {
+        semiMajorAxis: 350,
+        eccentricity: 0.44,
+        inclination: 0.79,
+        size: 0.19,
+        speed: 0.0018,
+        rotationSpeed: 0.93,
+        color: 0xcccccc
+    },
+    haumea: {
+        semiMajorAxis: 220,
+        eccentricity: 0.19,
+        inclination: 0.49,
+        size: 0.16,
+        speed: 0.0035,
+        rotationSpeed: 6.1,
+        color: 0xffffff
+    },
+    makemake: {
+        semiMajorAxis: 240,
+        eccentricity: 0.16,
+        inclination: 0.51,
+        size: 0.14,
+        speed: 0.0032,
+        rotationSpeed: 1.1,
+        color: 0xd4a574
+    }
 };
 
 const moonData = {
@@ -248,6 +336,9 @@ function init() {
         createSun();
         createPlanets();
         createOrbits();
+        createDwarfPlanets();
+        createAsteroidBelt();
+        createKuiperBelt();
     };
 
     // Add mouse controls
@@ -275,7 +366,7 @@ function createStarField() {
 
     // Add additional point stars for depth
     const starGeometry = new THREE.BufferGeometry();
-    const starCount = 2000;
+    const starCount = 10000;
     const positions = new Float32Array(starCount * 3);
 
     for (let i = 0; i < starCount * 3; i++) {
