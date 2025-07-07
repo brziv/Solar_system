@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar System Simulation</title>
+    <title>Solar system simulation</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -14,7 +14,7 @@
 
         <div id="controls" style="display: none;">
             <div class="control-group">
-                <h3>Time Speed</h3>
+                <h3>Time speed</h3>
                 <div class="slider-container">
                     <input type="range" id="timeSpeedSlider" min="0" max="10" step="0.1" value="1" 
                            oninput="setTimeSpeed(parseFloat(this.value))">
@@ -24,7 +24,7 @@
             </div>
 
             <div class="control-group">
-                <h3>Movement Speed</h3>
+                <h3>Movement speed</h3>
                 <div class="slider-container">
                     <input type="range" id="movementSpeedSlider" min="1" max="200" step="1" value="10" 
                            oninput="setMovementSpeed(parseFloat(this.value))">
@@ -33,7 +33,7 @@
             </div>
 
             <div class="control-group">
-                <h3>Focus Planet</h3>
+                <h3>Focus planet</h3>
                 <div class="planet-controls">
                     <button onclick="focusPlanet('sun')">Sun</button>
                     <button onclick="focusPlanet('mercury')">Mercury</button>
@@ -48,7 +48,7 @@
             </div>
 
             <div class="control-group">
-                <h3>Focus Dwarf Planets</h3>
+                <h3>Focus dwarf planet</h3>
                 <div class="planet-controls">
                     <button onclick="focusPlanet('ceres')">Ceres</button>
                     <button onclick="focusPlanet('pluto')">Pluto</button>
@@ -59,36 +59,35 @@
             </div>
 
             <div class="control-group">
-                <h3>View Options</h3>
+                <h3>View options</h3>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showOrbits" checked onchange="toggleOrbits()">
-                    <label for="showOrbits">Show Orbits</label>
+                    <label for="showOrbits">Show orbits</label>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showMoons" checked onchange="toggleMoons()">
-                    <label for="showMoons">Show Moons</label>
+                    <label for="showMoons">Show moons</label>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showDwarfPlanets" checked onchange="toggleDwarfPlanets()">
-                    <label for="showDwarfPlanets">Show Dwarf Planets</label>
+                    <label for="showDwarfPlanets">Show dwarf planets</label>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showAsteroidBelt" checked onchange="toggleAsteroidBelt()">
-                    <label for="showAsteroidBelt">Show Asteroid Belt</label>
+                    <label for="showAsteroidBelt">Show asteroid belt</label>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="showKuiperBelt" checked onchange="toggleKuiperBelt()">
-                    <label for="showKuiperBelt">Show Kuiper Belt</label>
+                    <label for="showKuiperBelt">Show Kuiper belt</label>
                 </div>
-                <button onclick="resetCamera()">Reset Camera</button>
+                <button onclick="resetCamera()">Reset camera</button>
             </div>
         </div>
 
         <div id="info" style="display: none;">
-            <div>Camera: Free roam (drag to rotate, scroll to zoom, WASD to move)</div>
-            <div>Controls: W=Forward, S=Backward, A=Left, D=Right, Space=Up, Shift=Down</div>
-            <div>Movement speed: Use controls panel to adjust travel speed</div>
-            <div id="currentFocus">Focus: Free Camera</div>
+            <div>Camera: Free roam (drag, scroll, WASD)</div>
+            <div>Controls: Space = Up, Ctrl= Down, Shift = Double speed</div>
+            <div id="currentFocus">Focus: Free camera</div>
         </div>
 
         <div id="planet-info" style="display: none;"></div>
