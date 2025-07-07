@@ -32,30 +32,34 @@ let mouseDown = false;
 let mouseX = 0;
 let mouseY = 0;
 
-// Solar system data - Sun at 2x Jupiter for visibility
+// Scaling constants
+const DISTANCE_SCALE = 200;  // AU to pixels (1 AU = 200 pixels)
+const SIZE_SCALE = 4;       // Planet size scaling for visibility
+
+// Solar system data
 const sunData = {
-    size: 22  // 2x Jupiter size (11 * 2 = 22)
+    size: 5
 };
 
-// Planet data relative to Earth (Earth = 1 unit) - Realistic proportions
+// Planet data relative to Earth (Earth = 1 unit) - Realistic proportions and distances in AU
 const planetData = {
-    mercury: { size: 0.38, distance: 2.0, speed: 0.008, color: 0x8C7853, inclination: 7.0 },
-    venus: { size: 0.95, distance: 3.5, speed: 0.006, color: 0xFFC649, inclination: 3.4 },
-    earth: { size: 1, distance: 5.0, speed: 0.005, color: 0x6B93D6, hasAtmosphere: true, inclination: 0.0 },
-    mars: { size: 0.53, distance: 7.5, speed: 0.004, color: 0xCD5C5C, inclination: 1.9 },
-    jupiter: { size: 11, distance: 26.0, speed: 0.002, color: 0xD8CA9D, inclination: 1.3 },
-    saturn: { size: 9, distance: 47.5, speed: 0.0015, color: 0xFAD5A5, hasRings: true, inclination: 2.5 },
-    uranus: { size: 4, distance: 96.0, speed: 0.001, color: 0x4FD0E7, inclination: 0.8 },
-    neptune: { size: 3.9, distance: 150.0, speed: 0.0008, color: 0x4B70DD, inclination: 1.8 }
+    mercury: { size: 0.38, distance: 0.39, speed: 0.008, color: 0x8C7853, inclination: 7.0 },
+    venus: { size: 0.95, distance: 0.72, speed: 0.006, color: 0xFFC649, inclination: 3.4 },
+    earth: { size: 1, distance: 1.0, speed: 0.005, color: 0x6B93D6, hasAtmosphere: true, inclination: 0.0 },
+    mars: { size: 0.53, distance: 1.52, speed: 0.004, color: 0xCD5C5C, inclination: 1.9 },
+    jupiter: { size: 11, distance: 5.2, speed: 0.002, color: 0xD8CA9D, inclination: 1.3 },
+    saturn: { size: 9, distance: 9.5, speed: 0.0015, color: 0xFAD5A5, hasRings: true, inclination: 2.5 },
+    uranus: { size: 4, distance: 19.2, speed: 0.001, color: 0x4FD0E7, inclination: 0.8 },
+    neptune: { size: 3.9, distance: 30.1, speed: 0.0008, color: 0x4B70DD, inclination: 1.8 }
 };
 
-// Dwarf planet data with orbital inclinations and eccentricity - Realistic proportions
+// Dwarf planet data with orbital inclinations and eccentricity - Realistic proportions and distances in AU
 const dwarfPlanetData = {
-    ceres: { size: 0.15, distance: 14.0, speed: 0.003, color: 0x8C7853, type: 'asteroid belt', inclination: 10.6, eccentricity: 0.076 },
-    pluto: { size: 0.18, distance: 197.5, speed: 0.0006, color: 0xD4A574, type: 'kuiper belt', inclination: 17.2, eccentricity: 0.244 },
-    eris: { size: 0.19, distance: 338.5, speed: 0.0005, color: 0xCCCCCC, type: 'scattered disk', inclination: 44.2, eccentricity: 0.436 },
-    haumea: { size: 0.12, distance: 216.5, speed: 0.0006, color: 0xFFFFFF, type: 'kuiper belt', inclination: 28.2, eccentricity: 0.189 },
-    makemake: { size: 0.11, distance: 229.0, speed: 0.0005, color: 0xD4A574, type: 'kuiper belt', inclination: 29.0, eccentricity: 0.159 }
+    ceres: { size: 0.15, distance: 2.8, speed: 0.003, color: 0x8C7853, type: 'asteroid belt', inclination: 10.6, eccentricity: 0.076 },
+    pluto: { size: 0.18, distance: 39.5, speed: 0.0006, color: 0xD4A574, type: 'kuiper belt', inclination: 17.2, eccentricity: 0.244 },
+    eris: { size: 0.19, distance: 67.7, speed: 0.0005, color: 0xCCCCCC, type: 'scattered disk', inclination: 44.2, eccentricity: 0.436 },
+    haumea: { size: 0.12, distance: 43.3, speed: 0.0006, color: 0xFFFFFF, type: 'kuiper belt', inclination: 28.2, eccentricity: 0.189 },
+    makemake: { size: 0.11, distance: 45.8, speed: 0.0005, color: 0xD4A574, type: 'kuiper belt', inclination: 29.0, eccentricity: 0.159 }
 };
 
 // Moon data - Realistic proportions
@@ -69,8 +73,9 @@ function init() {
     scene = new THREE.Scene();
 
     // Create camera
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300000);
-    camera.position.set(0, 500, 1500); // Moved back further for larger system
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500000);
+    camera.position.set(0, 500, 1000);
+    camera.lookAt(0, 0, 0);
 
     // Create renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -181,9 +186,9 @@ function createStarfield() {
     const positions = new Float32Array(starCount * 3);
 
     for (let i = 0; i < starCount; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * 200000;
-        positions[i * 3 + 1] = (Math.random() - 0.5) * 200000;
-        positions[i * 3 + 2] = (Math.random() - 0.5) * 200000;
+        positions[i * 3] = (Math.random() - 0.5) * 300000;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 300000;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 300000;
     }
 
     starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -200,7 +205,7 @@ function createStarfield() {
 
 // Create the sun
 function createSun() {
-    const geometry = new THREE.SphereGeometry(sunData.size * 8, 32, 32);
+    const geometry = new THREE.SphereGeometry(sunData.size * 8, 32, 32); // Custom scaling for sun visibility
     let material;
 
     if (loadedTextures.sun) {
@@ -230,7 +235,7 @@ function createSun() {
 
 // Create a planet
 function createPlanet(name, data) {
-    const geometry = new THREE.SphereGeometry(data.size * 10, 32, 32);
+    const geometry = new THREE.SphereGeometry(data.size * SIZE_SCALE, 32, 32);
     let material;
 
     if (loadedTextures[name]) {
@@ -245,13 +250,13 @@ function createPlanet(name, data) {
     const inclinationRad = (data.inclination || 0) * Math.PI / 180;
     const angle = Math.random() * Math.PI * 2;
 
-    planet.position.x = Math.cos(angle) * data.distance * 200; // Increased from 30 to 200
-    planet.position.z = Math.sin(angle) * data.distance * 200;
+    planet.position.x = Math.cos(angle) * data.distance * DISTANCE_SCALE;
+    planet.position.z = Math.sin(angle) * data.distance * DISTANCE_SCALE;
     planet.position.y = Math.sin(inclinationRad) * data.distance * 10; // Scaled proportionally
 
     planet.userData = {
         name,
-        originalDistance: data.distance * 200, // Updated to match
+        originalDistance: data.distance * DISTANCE_SCALE,
         speed: data.speed,
         angle: angle,
         inclination: inclinationRad
@@ -262,7 +267,7 @@ function createPlanet(name, data) {
 
     // Special handling for Earth (add clouds)
     if (name === 'earth' && loadedTextures.earthClouds) {
-        const cloudGeometry = new THREE.SphereGeometry(data.size * 5, 32, 32);
+        const cloudGeometry = new THREE.SphereGeometry(data.size * (SIZE_SCALE - 0.5), 32, 32);
         const cloudMaterial = new THREE.MeshLambertMaterial({
             map: loadedTextures.earthClouds,
             transparent: true,
@@ -275,7 +280,7 @@ function createPlanet(name, data) {
 
     // Special handling for Saturn (add rings)
     if (name === 'saturn') {
-        const ringGeometry = new THREE.RingGeometry(data.size * 20, data.size * 3.5, 32);
+        const ringGeometry = new THREE.RingGeometry(data.size * (SIZE_SCALE * 2), data.size * (SIZE_SCALE - 6.5), 32);
         const ringMaterial = new THREE.MeshLambertMaterial({
             map: loadedTextures.ring,
             transparent: true,
@@ -290,7 +295,7 @@ function createPlanet(name, data) {
 
 // Create a moon
 function createMoon(planetName, moonInfo) {
-    const geometry = new THREE.SphereGeometry(moonInfo.size * 15, 16, 16);
+    const geometry = new THREE.SphereGeometry(moonInfo.size * (SIZE_SCALE + 5), 16, 16); // Extra scaling for moon visibility
     let material;
 
     if (loadedTextures[moonInfo.name]) {
@@ -317,7 +322,7 @@ function createMoon(planetName, moonInfo) {
 
 // Create a dwarf planet
 function createDwarfPlanet(name, data) {
-    const geometry = new THREE.SphereGeometry(data.size * 50, 16, 16);
+    const geometry = new THREE.SphereGeometry(data.size * (SIZE_SCALE * 5), 16, 16); // Extra scaling for dwarf planet visibility
     let material;
 
     if (loadedTextures[name]) {
@@ -332,13 +337,13 @@ function createDwarfPlanet(name, data) {
     const inclinationRad = (data.inclination || 0) * Math.PI / 180;
     const angle = Math.random() * Math.PI * 2;
 
-    dwarfPlanet.position.x = Math.cos(angle) * data.distance * 200; // Increased from 30 to 200
-    dwarfPlanet.position.z = Math.sin(angle) * data.distance * 200;
+    dwarfPlanet.position.x = Math.cos(angle) * data.distance * DISTANCE_SCALE;
+    dwarfPlanet.position.z = Math.sin(angle) * data.distance * DISTANCE_SCALE;
     dwarfPlanet.position.y = Math.sin(inclinationRad) * data.distance * 50; // Increased from 15 to 50 for more visible inclination
 
     dwarfPlanet.userData = {
         name,
-        originalDistance: data.distance * 200, // Updated to match
+        originalDistance: data.distance * DISTANCE_SCALE,
         speed: data.speed,
         angle: angle,
         type: data.type,
@@ -356,7 +361,7 @@ function createOrbits() {
     for (let planetName in planetData) {
         const data = planetData[planetName];
         const points = [];
-        const radius = data.distance * 200; // Increased from 30 to 200
+        const radius = data.distance * DISTANCE_SCALE;
         const inclinationRad = (data.inclination || 0) * Math.PI / 180;
 
         for (let i = 0; i <= 128; i++) {
@@ -385,7 +390,7 @@ function createOrbits() {
     for (let dwarfName in dwarfPlanetData) {
         const data = dwarfPlanetData[dwarfName];
         const points = [];
-        const semiMajorAxis = data.distance * 200;
+        const semiMajorAxis = data.distance * DISTANCE_SCALE;
         const eccentricity = data.eccentricity || 0;
         const semiMinorAxis = semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity);
         const inclinationRad = (data.inclination || 0) * Math.PI / 180;
@@ -422,18 +427,18 @@ function createOrbits() {
 
 // Create asteroid belt
 function createAsteroidBelt() {
-    const asteroidCount = 3000; // Increased from 500
+    const asteroidCount = 2000;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(asteroidCount * 3);
 
     for (let i = 0; i < asteroidCount; i++) {
-        const distance = 11.0 + Math.random() * 6.0; // Between Mars and Jupiter (scaled up)
+        const distance = 2.2 + Math.random() * 1.2; // Real asteroid belt range: 2.2-3.4 AU
         const angle = Math.random() * Math.PI * 2;
         const height = (Math.random() - 0.5) * 20; // Increased height variation
 
-        positions[i * 3] = Math.cos(angle) * distance * 200; // Increased from 30 to 200
+        positions[i * 3] = Math.cos(angle) * distance * DISTANCE_SCALE;
         positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * distance * 200;
+        positions[i * 3 + 2] = Math.sin(angle) * distance * DISTANCE_SCALE;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -450,18 +455,18 @@ function createAsteroidBelt() {
 
 // Create kuiper belt
 function createKuiperBelt() {
-    const kuiperCount = 150000; // Increased from 100000
+    const kuiperCount = 50000;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(kuiperCount * 3);
 
     for (let i = 0; i < kuiperCount; i++) {
-        const distance = 150 + Math.random() * 400; // Extended range beyond Neptune (scaled up)
+        const distance = 30 + Math.random() * 20; // Real Kuiper belt range: 30-50 AU
         const angle = Math.random() * Math.PI * 2;
         const height = (Math.random() - 0.5) * 30; // Increased height variation
 
-        positions[i * 3] = Math.cos(angle) * distance * 200; // Increased from 30 to 200
+        positions[i * 3] = Math.cos(angle) * distance * DISTANCE_SCALE;
         positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * distance * 200;
+        positions[i * 3 + 2] = Math.sin(angle) * distance * DISTANCE_SCALE;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -936,7 +941,7 @@ function focusPlanet(planetName) {
 
 function resetCamera() {
     currentFocus = null;
-    camera.position.set(0, 500, 1500); // Updated for larger system
+    camera.position.set(0, 500, 1000); // Updated for larger system
     camera.lookAt(0, 0, 0);
     document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
 
