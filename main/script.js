@@ -67,6 +67,13 @@ const moonData = {
     earth: [{ name: 'moon', size: 0.27, distance: 15, speed: 0.02, color: 0x969696 }]
 };
 
+// Thêm biến toàn cục để lưu khoảng cách mong muốn khi focus
+let focusTargetDistance = null;
+
+// Đảo ngược logic slider: kéo sang phải là gần nhất
+const ZOOM_MIN = 45;   // Gần nhất
+const ZOOM_MAX = 1000; // Xa nhất
+
 // Initialize the solar system
 function init() {
     // Create scene
@@ -108,6 +115,7 @@ function init() {
 
     // Set up event listeners
     setupEventListeners();
+    syncZoomSlider();
 }
 
 // Load all textures
@@ -673,11 +681,31 @@ function onMouseUp() {
 }
 
 function onMouseWheel(event) {
-    const distance = camera.position.length();
-    const factor = event.deltaY > 0 ? 1.1 : 0.9;
-    const newDistance = Math.max(300, Math.min(20000, distance * factor)); // Increased limits for larger system
-
-    camera.position.normalize().multiplyScalar(newDistance);
+    if (currentFocus) {
+        let target;
+        if (currentFocus === 'sun') {
+            target = sun;
+        } else if (planets[currentFocus]) {
+            target = planets[currentFocus];
+        } else if (dwarfPlanets[currentFocus]) {
+            target = dwarfPlanets[currentFocus];
+        }
+        if (target) {
+            const currentDistance = camera.position.distanceTo(target.position);
+            const factor = event.deltaY > 0 ? 1.1 : 0.9;
+            const minDistance = (target.geometry ? target.geometry.parameters.radius : 1) * 3;
+            const maxDistance = 20000;
+            let newDistance = Math.max(minDistance, Math.min(maxDistance, currentDistance * factor));
+            focusTargetDistance = newDistance;
+            syncZoomSlider();
+        }
+    } else {
+        const distance = camera.position.length();
+        const factor = event.deltaY > 0 ? 1.1 : 0.9;
+        const newDistance = Math.max(300, Math.min(20000, distance * factor));
+        camera.position.normalize().multiplyScalar(newDistance);
+        syncZoomSlider();
+    }
 }
 
 function onWindowResize() {
@@ -821,26 +849,27 @@ function updateCameraFocus() {
         } else if (dwarfPlanets[currentFocus]) {
             target = dwarfPlanets[currentFocus];
         }
-
         if (target) {
-            // Only apply automatic following if no keys are pressed
             const isMoving = keys.w || keys.s || keys.a || keys.d || keys.space || keys.ctrl;
-            
+            let defaultDistance = target === sun ? 500 : 45;
+            if (focusTargetDistance === null) focusTargetDistance = defaultDistance;
             if (!isMoving) {
-                // Auto-follow behavior when not manually moving
-                const distance = target === sun ? 500 : 150;
-                const targetPos = target.position.clone();
-                const cameraPos = targetPos.clone().add(new THREE.Vector3(distance, distance * 0.5, distance));
-                
-                camera.position.lerp(cameraPos, 0.05);
+                let direction;
+                if (camera.position.equals(target.position)) {
+                    direction = new THREE.Vector3(1, 0.5, 1).normalize();
+                } else {
+                    direction = camera.position.clone().sub(target.position).normalize();
+                }
+                const cameraPos = target.position.clone().add(direction.multiplyScalar(focusTargetDistance));
+                camera.position.lerp(cameraPos, 0.1);
             }
-            
-            // Always look at the target
             camera.lookAt(target.position);
-
-            // Update planet info display
             updatePlanetInfoDisplay(currentFocus, target);
+            syncZoomSlider();
         }
+    } else {
+        focusTargetDistance = null;
+        syncZoomSlider();
     }
 }
 
@@ -935,23 +964,22 @@ function setMovementSpeed(speed) {
 }
 
 function focusPlanet(planetName) {
-    // If clicking the same planet/object again, unfocus
     if (currentFocus === planetName) {
         resetCamera();
         return;
     }
-    
     currentFocus = planetName;
     document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
-    
-    // Update button states to show which one is active
+    focusTargetDistance = null;
     updateFocusButtonStates(planetName);
+    syncZoomSlider();
 }
 
 function resetCamera() {
     currentFocus = null;
-    camera.position.set(0, 500, 1000); // Updated for larger system
+    camera.position.set(0, 500, 1000);
     camera.lookAt(0, 0, 0);
+    focusTargetDistance = null;
     document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
 
     // Hide planet info and preview
@@ -968,6 +996,7 @@ function resetCamera() {
     
     // Clear button states
     updateFocusButtonStates(null);
+    syncZoomSlider();
 }
 
 function toggleOrbits() {
@@ -1027,6 +1056,44 @@ function updateFocusButtonStates(activePlanet) {
             activeButton.classList.add('active-focus');
         }
     }
+}
+
+// Thêm hàm điều khiển zoom bằng slider
+function setZoomSlider(sliderValue) {
+    const slider = document.getElementById('zoomSlider');
+    const label = document.getElementById('zoomSliderValue');
+    if (slider) slider.value = sliderValue;
+    // Tính khoảng cách thực tế: kéo phải là gần nhất
+    const distance = ZOOM_MAX - (sliderValue - ZOOM_MIN);
+    if (label) label.textContent = Math.round(distance);
+    if (currentFocus) {
+        focusTargetDistance = distance;
+    } else {
+        camera.position.normalize().multiplyScalar(distance);
+    }
+}
+
+// Cập nhật giá trị slider khi zoom bằng chuột hoặc khi focus thay đổi
+function syncZoomSlider() {
+    const slider = document.getElementById('zoomSlider');
+    const label = document.getElementById('zoomSliderValue');
+    let distance = 1000;
+    if (currentFocus) {
+        let target;
+        if (currentFocus === 'sun') target = sun;
+        else if (planets[currentFocus]) target = planets[currentFocus];
+        else if (dwarfPlanets[currentFocus]) target = dwarfPlanets[currentFocus];
+        if (target) {
+            distance = camera.position.distanceTo(target.position);
+        }
+    } else {
+        distance = camera.position.length();
+    }
+    // Tính lại giá trị slider: kéo phải là gần nhất
+    let sliderValue = ZOOM_MAX - (distance - ZOOM_MIN);
+    sliderValue = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, sliderValue));
+    if (slider) slider.value = sliderValue;
+    if (label) label.textContent = Math.round(distance);
 }
 
 // Initialize when page loads
