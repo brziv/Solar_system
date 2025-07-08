@@ -123,7 +123,7 @@ function loadTextures() {
         mars: 'textures/8k_mars.jpg',
         jupiter: 'textures/8k_jupiter.jpg',
         saturn: 'textures/8k_saturn.jpg',
-        ring: 'textures/8k_saturn_ring.jpg',
+        ring: 'textures/8k_saturn_ring.png',
         uranus: 'textures/2k_uranus.jpg',
         neptune: 'textures/2k_neptune.jpg',
         moon: 'textures/8k_moon.jpg',
