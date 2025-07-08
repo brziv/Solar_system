@@ -10,102 +10,13 @@
 
 <body>
     <div id="container">
-        <div id="loading">Loading textures...</div>
-
-        <div id="controls" style="display: none;">
-            <div class="control-group">
-                <h3>Time speed</h3>
-                <div class="slider-container">
-                    <input type="range" id="timeSpeedSlider" min="0" max="10" step="0.1" value="1" 
-                           oninput="setTimeSpeed(parseFloat(this.value))">
-                    <span id="timeSpeedValue">1.0x</span>
-                </div>
-                <button id="pauseButton" onclick="togglePause()">⏸ Pause</button>
-            </div>
-
-            <div class="control-group">
-                <h3>Movement speed</h3>
-                <div class="slider-container">
-                    <input type="range" id="movementSpeedSlider" min="1" max="50" step="1" value="10" 
-                           oninput="setMovementSpeed(parseFloat(this.value))">
-                    <span id="movementSpeedValue">5</span>
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <h3>Zoom</h3>
-                <div class="slider-container">
-                    <input type="range" id="zoomSlider" min="45" max="1000" step="1" value="1000" oninput="setZoomSlider(parseFloat(this.value))">
-                    <span id="zoomSliderValue">1000</span>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <h3>Focus planet</h3>
-                <p style="font-size: 11px; color: #ccc; margin: 0 0 5px 0;">Click again to unfocus</p>
-                <div class="planet-controls">
-                    <button onclick="focusPlanet('sun')">Sun</button>
-                    <button onclick="focusPlanet('mercury')">Mercury</button>
-                    <button onclick="focusPlanet('venus')">Venus</button>
-                    <button onclick="focusPlanet('earth')">Earth</button>
-                    <button onclick="focusPlanet('mars')">Mars</button>
-                    <button onclick="focusPlanet('jupiter')">Jupiter</button>
-                    <button onclick="focusPlanet('saturn')">Saturn</button>
-                    <button onclick="focusPlanet('uranus')">Uranus</button>
-                    <button onclick="focusPlanet('neptune')">Neptune</button>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <h3>Focus dwarf planet</h3>
-                <p style="font-size: 11px; color: #ccc; margin: 0 0 5px 0;">Click again to unfocus</p>
-                <div class="planet-controls">
-                    <button onclick="focusPlanet('ceres')">Ceres</button>
-                    <button onclick="focusPlanet('pluto')">Pluto</button>
-                    <button onclick="focusPlanet('eris')">Eris</button>
-                    <button onclick="focusPlanet('haumea')">Haumea</button>
-                    <button onclick="focusPlanet('makemake')">Makemake</button>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <h3>View options</h3>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showOrbits" checked onchange="toggleOrbits()">
-                    <label for="showOrbits">Show orbits</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showMoons" checked onchange="toggleMoons()">
-                    <label for="showMoons">Show moons</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showDwarfPlanets" checked onchange="toggleDwarfPlanets()">
-                    <label for="showDwarfPlanets">Show dwarf planets</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showAsteroidBelt" checked onchange="toggleAsteroidBelt()">
-                    <label for="showAsteroidBelt">Show asteroid belt</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showKuiperBelt" checked onchange="toggleKuiperBelt()">
-                    <label for="showKuiperBelt">Show Kuiper belt</label>
-                </div>
-                <button onclick="resetCamera()">Reset camera</button>
-            </div>
-
-        </div>
-
-        <div id="info" style="display: none;">
-            <div>Camera: Free roam (drag, scroll, WASD)</div>
-            <div>Controls: Space = Up, Ctrl= Down, Shift = Double speed</div>
-            <div id="currentFocus">Focus: Free camera</div>
-        </div>
-
-        <div id="planet-info" style="display: none;"></div>
+        <div id="loading" data-i18n="loading">Loading textures...</div>
+        <div id="sidebar"></div>
+        <button id="open-sidebar" title="Mở menu" style="display:none;">☰</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 
 </html>
