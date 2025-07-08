@@ -56,6 +56,16 @@ button.active {
     color: #000;
 }
 
+button.active-focus {
+    background: #4CAF50;
+    color: white;
+    border-color: #45a049;
+}
+
+button.active-focus:hover {
+    background: #45a049;
+}
+
 .slider-container {
     display: flex;
     align-items: center;

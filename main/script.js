@@ -935,8 +935,17 @@ function setMovementSpeed(speed) {
 }
 
 function focusPlanet(planetName) {
+    // If clicking the same planet/object again, unfocus
+    if (currentFocus === planetName) {
+        resetCamera();
+        return;
+    }
+    
     currentFocus = planetName;
     document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
+    
+    // Update button states to show which one is active
+    updateFocusButtonStates(planetName);
 }
 
 function resetCamera() {
@@ -956,6 +965,9 @@ function resetCamera() {
         previewScene.remove(previewSphere);
         previewSphere = null;
     }
+    
+    // Clear button states
+    updateFocusButtonStates(null);
 }
 
 function toggleOrbits() {
@@ -995,6 +1007,25 @@ function toggleDwarfPlanets() {
     const show = document.getElementById('showDwarfPlanets').checked;
     for (let dwarfName in dwarfPlanets) {
         dwarfPlanets[dwarfName].visible = show;
+    }
+}
+
+// Update focus button states for visual feedback
+function updateFocusButtonStates(activePlanet) {
+    // Remove active class from all focus buttons
+    const buttons = document.querySelectorAll('.planet-controls button');
+    buttons.forEach(button => {
+        button.classList.remove('active-focus');
+    });
+    
+    // Add active class to the currently focused button
+    if (activePlanet) {
+        const activeButton = Array.from(buttons).find(button => 
+            button.textContent.toLowerCase() === activePlanet.toLowerCase()
+        );
+        if (activeButton) {
+            activeButton.classList.add('active-focus');
+        }
     }
 }
 
