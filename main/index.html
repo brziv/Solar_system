@@ -31,6 +31,14 @@
                     <span id="movementSpeedValue">5</span>
                 </div>
             </div>
+            
+            <div class="control-group">
+                <h3>Zoom</h3>
+                <div class="slider-container">
+                    <input type="range" id="zoomSlider" min="45" max="1000" step="1" value="1000" oninput="setZoomSlider(parseFloat(this.value))">
+                    <span id="zoomSliderValue">1000</span>
+                </div>
+            </div>
 
             <div class="control-group">
                 <h3>Focus planet</h3>
@@ -84,6 +92,7 @@
                 </div>
                 <button onclick="resetCamera()">Reset camera</button>
             </div>
+
         </div>
 
         <div id="info" style="display: none;">
