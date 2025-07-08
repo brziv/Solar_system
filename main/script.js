@@ -88,8 +88,8 @@ const moonData = {
 let focusTargetDistance = null;
 
 // Đảo ngược logic slider: kéo sang phải là gần nhất
-const ZOOM_MIN = 45;   // Gần nhất
-const ZOOM_MAX = 1000; // Xa nhất
+const ZOOM_MIN = 10;   // Gần nhất
+const ZOOM_MAX = 2000; // Xa nhất
 
 let sidebarTab = 'controls'; // 'controls' hoặc 'info'
 let lastFocusedPlanet = null;
@@ -720,8 +720,17 @@ function onMouseWheel(event) {
         if (target) {
             const currentDistance = camera.position.distanceTo(target.position);
             const factor = event.deltaY > 0 ? 1.1 : 0.9;
-            const minDistance = (target.geometry ? target.geometry.parameters.radius : 1) * 3;
-            const maxDistance = 20000;
+            let minDistance;
+            if (target === sun) {
+                minDistance = 50;
+            } else if (currentFocus === 'jupiter' || currentFocus === 'saturn') {
+                minDistance = 25;
+            } else if (currentFocus === 'uranus' || currentFocus === 'neptune') {
+                minDistance = 20;
+            } else {
+                minDistance = 15;
+            }
+            const maxDistance = ZOOM_MAX;
             let newDistance = Math.max(minDistance, Math.min(maxDistance, currentDistance * factor));
             focusTargetDistance = newDistance;
             syncZoomSlider();
@@ -729,7 +738,7 @@ function onMouseWheel(event) {
     } else {
         const distance = camera.position.length();
         const factor = event.deltaY > 0 ? 1.1 : 0.9;
-        const newDistance = Math.max(300, Math.min(20000, distance * factor));
+        const newDistance = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, distance * factor));
         camera.position.normalize().multiplyScalar(newDistance);
         syncZoomSlider();
     }
@@ -902,6 +911,13 @@ function updateCameraFocus() {
 
 // Update planet info display
 function getI18n(key, params = {}) {
+    if (!languages[currentLang] || typeof languages[currentLang] !== 'object') {
+        console.error('Ngôn ngữ không tồn tại hoặc không đúng object:', currentLang, languages);
+        return key;
+    }
+    if (!languages[currentLang][key]) {
+        console.warn('Không tìm thấy bản dịch cho key:', key, 'ở ngôn ngữ', currentLang);
+    }
     let str = languages[currentLang][key] || key;
     Object.keys(params).forEach(k => {
         str = str.replace(`{${k}}`, params[k]);
@@ -929,46 +945,31 @@ function updatePlanetInfoDisplay(objectName, object) {
         `;
     } else if (planets[objectName]) {
         objectData = planetData[objectName];
-        if (objectName === 'earth' || objectName === 'mars') {
-            info = `
-                <h3>${getI18n('planet_' + objectName)}</h3>
-                <div id="preview-placeholder"></div>
-                <p>${getI18n('planet_' + objectName + '_desc')}</p>
-                <p><strong>${getI18n('type') || 'Type'}:</strong> ${getI18n('planet_' + objectName + '_type')}</p>
-                <p><strong>${getI18n('distance') || 'Distance'}:</strong> ${getI18n('planet_' + objectName + '_distance')}</p>
-                <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${getI18n('planet_' + objectName + '_radius')}</p>
-                <p><strong>${getI18n('inclination') || 'Inclination'}:</strong> ${getI18n('planet_' + objectName + '_inclination')}</p>
-                <p><strong>${getI18n('speed') || 'Orbital Speed'}:</strong> ${getI18n('planet_' + objectName + '_speed')}</p>
-                <p><strong>${getI18n('orbit') || 'Orbit'}:</strong> ${getI18n('planet_' + objectName + '_orbit')}</p>
-                <p><em>${getI18n('planet_' + objectName + '_fact')}</em></p>
-            `;
-        } else {
-            // fallback cho các hành tinh khác
-            info = `
-                <h3>${getI18n('planet_' + objectName)}</h3>
-                <div id="preview-placeholder"></div>
-                <p><strong>${getI18n('type') || 'Type'}:</strong> Planet</p>
-                <p><strong>${getI18n('distance') || 'Distance'}:</strong> ${objectData.distance} AU</p>
-                <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${objectData.size} Earth radii</p>
-                <p><strong>${getI18n('inclination') || 'Inclination'}:</strong> ${objectData.inclination}°</p>
-                <p><strong>${getI18n('speed') || 'Orbital Speed'}:</strong> ${(objectData.speed * 100).toFixed(1)}% relative</p>
-                <p><strong>${getI18n('orbit') || 'Orbit'}:</strong> Nearly circular</p>
-            `;
-        }
-    } else if (dwarfPlanets[objectName]) {
-        objectData = dwarfPlanetData[objectName];
-        const eccentricityDesc = objectData.eccentricity > 0.3 ? 'Highly elliptical' : 
-                                objectData.eccentricity > 0.1 ? 'Moderately elliptical' : 'Mildly elliptical';
         info = `
             <h3>${getI18n('planet_' + objectName)}</h3>
             <div id="preview-placeholder"></div>
-            <p><strong>${getI18n('type') || 'Type'}:</strong> Dwarf Planet</p>
-            <p><strong>${getI18n('location') || 'Location'}:</strong> ${objectData.type}</p>
-            <p><strong>${getI18n('distance') || 'Distance'}:</strong> ${objectData.distance} AU</p>
-            <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${objectData.size} Earth radii</p>
-            <p><strong>${getI18n('inclination') || 'Inclination'}:</strong> ${objectData.inclination}° ${objectData.inclination > 20 ? '(Highly inclined)' : ''}</p>
-            <p><strong>${getI18n('eccentricity') || 'Eccentricity'}:</strong> ${objectData.eccentricity} (${eccentricityDesc})</p>
-            <p><strong>${getI18n('orbit') || 'Orbit'}:</strong> ${objectData.eccentricity > 0.2 ? 'Highly elliptical and tilted' : 'Elliptical'}</p>
+            <p>${getI18n('planet_' + objectName + '_desc')}</p>
+            <p><strong>${getI18n('type') || 'Type'}:</strong> ${getI18n('planet_' + objectName + '_type')}</p>
+            <p><strong>${getI18n('distance') || 'Distance'}:</strong> ${getI18n('planet_' + objectName + '_distance')}</p>
+            <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${getI18n('planet_' + objectName + '_radius')}</p>
+            <p><strong>${getI18n('inclination') || 'Inclination'}:</strong> ${getI18n('planet_' + objectName + '_inclination')}</p>
+            <p><strong>${getI18n('speed') || 'Orbital Speed'}:</strong> ${getI18n('planet_' + objectName + '_speed')}</p>
+            <p><strong>${getI18n('orbit') || 'Orbit'}:</strong> ${getI18n('planet_' + objectName + '_orbit')}</p>
+            <p><em>${getI18n('planet_' + objectName + '_fact')}</em></p>
+        `;
+    } else if (dwarfPlanets[objectName]) {
+        objectData = dwarfPlanetData[objectName];
+        info = `
+            <h3>${getI18n('planet_' + objectName)}</h3>
+            <div id="preview-placeholder"></div>
+            <p>${getI18n('planet_' + objectName + '_desc')}</p>
+            <p><strong>${getI18n('type') || 'Type'}:</strong> ${getI18n('planet_' + objectName + '_type')}</p>
+            <p><strong>${getI18n('distance') || 'Distance'}:</strong> ${getI18n('planet_' + objectName + '_distance')}</p>
+            <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${getI18n('planet_' + objectName + '_radius')}</p>
+            <p><strong>${getI18n('inclination') || 'Inclination'}:</strong> ${getI18n('planet_' + objectName + '_inclination')}</p>
+            <p><strong>${getI18n('speed') || 'Orbital Speed'}:</strong> ${getI18n('planet_' + objectName + '_speed')}</p>
+            <p><strong>${getI18n('orbit') || 'Orbit'}:</strong> ${getI18n('planet_' + objectName + '_orbit')}</p>
+            <p><em>${getI18n('planet_' + objectName + '_fact')}</em></p>
         `;
     }
 
@@ -1104,27 +1105,29 @@ function updateFocusButtonStates(activePlanet) {
     }
 }
 
-// Thêm hàm điều khiển zoom bằng slider
+let isUpdatingZoomSlider = false;
 function setZoomSlider(sliderValue) {
+    if (isUpdatingZoomSlider) return;
     const slider = document.getElementById('zoomSlider');
     const label = document.getElementById('zoomSliderValue');
+    const distance = sliderValue;
     if (slider) slider.value = sliderValue;
-    // Tính khoảng cách thực tế: kéo phải là gần nhất
-    const distance = ZOOM_MAX - (sliderValue - ZOOM_MIN);
     if (label) label.textContent = Math.round(distance);
     if (currentFocus) {
         focusTargetDistance = distance;
     } else {
-        camera.position.normalize().multiplyScalar(distance);
+        const dir = camera.position.clone().normalize();
+        camera.position.copy(dir.multiplyScalar(distance));
     }
 }
 
-// Cập nhật giá trị slider khi zoom bằng chuột hoặc khi focus thay đổi
 function syncZoomSlider() {
     const slider = document.getElementById('zoomSlider');
     const label = document.getElementById('zoomSliderValue');
     let distance = 1000;
-    if (currentFocus) {
+    if (currentFocus && focusTargetDistance !== null) {
+        distance = focusTargetDistance;
+    } else if (currentFocus) {
         let target;
         if (currentFocus === 'sun') target = sun;
         else if (planets[currentFocus]) target = planets[currentFocus];
@@ -1135,11 +1138,11 @@ function syncZoomSlider() {
     } else {
         distance = camera.position.length();
     }
-    // Tính lại giá trị slider: kéo phải là gần nhất
-    let sliderValue = ZOOM_MAX - (distance - ZOOM_MIN);
-    sliderValue = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, sliderValue));
-    if (slider) slider.value = sliderValue;
+    distance = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, distance));
+    isUpdatingZoomSlider = true;
+    if (slider) slider.value = distance;
     if (label) label.textContent = Math.round(distance);
+    isUpdatingZoomSlider = false;
 }
 
 // Sidebar show/hide logic
@@ -1226,7 +1229,7 @@ function renderSidebarTabContent() {
             <div class="control-group">
                 <h3 data-i18n="zoom">${getI18n('zoom')}</h3>
                 <div class="slider-container">
-                    <input type="range" id="zoomSlider" min="45" max="1000" step="1" value="1000">
+                    <input type="range" id="zoomSlider" min="10" max="2000" step="1" value="1000">
                     <span id="zoomSliderValue">1000</span>
                 </div>
             </div>

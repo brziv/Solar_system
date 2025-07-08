@@ -1,4 +1,10 @@
 export default {
+  "type": "Loại",
+  "distance": "Khoảng cách tới Mặt Trời",
+  "radius": "Bán kính",
+  "inclination": "Độ nghiêng quỹ đạo",
+  "speed": "Tốc độ quỹ đạo",
+  "orbit": "Chu kỳ quỹ đạo",
   "title": "Mô phỏng Hệ Mặt Trời",
   "loading": "Đang tải texture...",
   "time_speed": "Tốc độ thời gian",

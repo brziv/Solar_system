@@ -1,4 +1,10 @@
 export default {
+  "type": "Type",
+  "distance": "Distance",
+  "radius": "Radius",
+  "inclination": "Inclination",
+  "speed": "Speed",
+  "orbit": "Orbit",
   "title": "Solar System Simulation",
   "loading": "Loading textures...",
   "time_speed": "Time speed",
