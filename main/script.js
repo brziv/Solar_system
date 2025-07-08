@@ -1,3 +1,20 @@
+import { languages } from './lang/index.js';
+
+let currentLang = localStorage.getItem('lang') || 'vi';
+
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('lang', lang);
+    const dict = languages[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.textContent = dict[key];
+    });
+    // Đặt lại value cho select nếu cần
+    const sel = document.getElementById('lang-select');
+    if (sel && sel.value !== lang) sel.value = lang;
+}
+
 // Global variables
 let scene, camera, renderer;
 let sun, planets = {}, moons = {}, dwarfPlanets = {};
@@ -70,9 +87,12 @@ const moonData = {
 // Thêm biến toàn cục để lưu khoảng cách mong muốn khi focus
 let focusTargetDistance = null;
 
-// Zoom slider constants - simplified approach
-const ZOOM_MIN = 10;   // Closest zoom
-const ZOOM_MAX = 2000; // Farthest zoom
+// Đảo ngược logic slider: kéo sang phải là gần nhất
+const ZOOM_MIN = 10;   // Gần nhất
+const ZOOM_MAX = 2000; // Xa nhất
+
+let sidebarTab = 'controls'; // 'controls' hoặc 'info'
+let lastFocusedPlanet = null;
 
 // Initialize the solar system
 function init() {
@@ -103,11 +123,9 @@ function init() {
     };
     loadingManager.onLoad = () => {
         document.getElementById('loading').style.display = 'none';
-        document.getElementById('controls').style.display = 'block';
-        document.getElementById('info').style.display = 'block';
-
+        renderSidebarContent();
         createSolarSystem();
-        createPreviewSphere(); // Initialize preview sphere system
+        createPreviewSphere();
         animate();
     };
 
@@ -116,11 +134,16 @@ function init() {
 
     // Set up event listeners
     setupEventListeners();
-    
-    // Initialize zoom slider after DOM is ready
-    setTimeout(() => {
-        syncZoomSlider();
-    }, 100);
+    syncZoomSlider();
+
+    setLanguage(currentLang);
+    const sel = document.getElementById('lang-select');
+    if (sel) {
+        sel.value = currentLang;
+        sel.addEventListener('change', (e) => {
+            setLanguage(e.target.value);
+        });
+    }
 }
 
 // Load all textures
@@ -698,19 +721,16 @@ function onMouseWheel(event) {
         if (target) {
             const currentDistance = camera.position.distanceTo(target.position);
             const factor = event.deltaY > 0 ? 1.1 : 0.9;
-            
-            // Set reasonable minimum distances based on object type
             let minDistance;
             if (target === sun) {
-                minDistance = 50; // Sun minimum distance
+                minDistance = 50;
             } else if (currentFocus === 'jupiter' || currentFocus === 'saturn') {
-                minDistance = 25; // Large planets
+                minDistance = 25;
             } else if (currentFocus === 'uranus' || currentFocus === 'neptune') {
-                minDistance = 20; // Medium planets
+                minDistance = 20;
             } else {
-                minDistance = 15; // Small planets and dwarf planets
+                minDistance = 15;
             }
-            
             const maxDistance = ZOOM_MAX;
             let newDistance = Math.max(minDistance, Math.min(maxDistance, currentDistance * factor));
             focusTargetDistance = newDistance;
@@ -900,8 +920,23 @@ function updateCameraFocus() {
 }
 
 // Update planet info display
+function getI18n(key, params = {}) {
+    if (!languages[currentLang] || typeof languages[currentLang] !== 'object') {
+        console.error('Ngôn ngữ không tồn tại hoặc không đúng object:', currentLang, languages);
+        return key;
+    }
+    if (!languages[currentLang][key]) {
+        console.warn('Không tìm thấy bản dịch cho key:', key, 'ở ngôn ngữ', currentLang);
+    }
+    let str = languages[currentLang][key] || key;
+    Object.keys(params).forEach(k => {
+        str = str.replace(`{${k}}`, params[k]);
+    });
+    return str;
+}
+
 function updatePlanetInfoDisplay(objectName, object) {
-    const infoElement = document.getElementById('planet-info');
+    const infoElement = document.getElementById('sidebar-planet-info');
     if (!infoElement) return;
 
     let info = '';
@@ -910,39 +945,41 @@ function updatePlanetInfoDisplay(objectName, object) {
     if (objectName === 'sun') {
         objectData = sunData;
         info = `
-            <h3>Sun</h3>
+            <h3>${getI18n('planet_sun')}</h3>
             <div id="preview-placeholder"></div>
-            <p><strong>Type:</strong> G-type main-sequence star</p>
-            <p><strong>Temperature:</strong> 5,778 K</p>
-            <p><strong>Radius:</strong> ${sunData.size} Earth radii (compressed)</p>
-            <p><strong>Real:</strong> Actually 109x Earth radii</p>
+            <p>${getI18n('planet_sun_desc')}</p>
+            <p><strong>${getI18n('type') || 'Type'}:</strong> ${getI18n('planet_sun_type')}</p>
+            <p><strong>${getI18n('temperature') || 'Temperature'}:</strong> ${getI18n('planet_sun_temp')}</p>
+            <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${getI18n('planet_sun_radius')}</p>
+            <p><em>${getI18n('planet_sun_fact')}</em></p>
         `;
     } else if (planets[objectName]) {
         objectData = planetData[objectName];
         info = `
-            <h3>${objectName.charAt(0).toUpperCase() + objectName.slice(1)}</h3>
+            <h3>${getI18n('planet_' + objectName)}</h3>
             <div id="preview-placeholder"></div>
-            <p><strong>Type:</strong> Planet</p>
-            <p><strong>Distance:</strong> ${objectData.distance} AU</p>
-            <p><strong>Radius:</strong> ${objectData.size} Earth radii</p>
-            <p><strong>Inclination:</strong> ${objectData.inclination}°</p>
-            <p><strong>Orbital Speed:</strong> ${(objectData.speed * 100).toFixed(1)}% relative</p>
-            <p><strong>Orbit:</strong> Nearly circular</p>
+            <p>${getI18n('planet_' + objectName + '_desc')}</p>
+            <p><strong>${getI18n('type') || 'Type'}:</strong> ${getI18n('planet_' + objectName + '_type')}</p>
+            <p><strong>${getI18n('distance') || 'Distance'}:</strong> ${getI18n('planet_' + objectName + '_distance')}</p>
+            <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${getI18n('planet_' + objectName + '_radius')}</p>
+            <p><strong>${getI18n('inclination') || 'Inclination'}:</strong> ${getI18n('planet_' + objectName + '_inclination')}</p>
+            <p><strong>${getI18n('speed') || 'Orbital Speed'}:</strong> ${getI18n('planet_' + objectName + '_speed')}</p>
+            <p><strong>${getI18n('orbit') || 'Orbit'}:</strong> ${getI18n('planet_' + objectName + '_orbit')}</p>
+            <p><em>${getI18n('planet_' + objectName + '_fact')}</em></p>
         `;
     } else if (dwarfPlanets[objectName]) {
         objectData = dwarfPlanetData[objectName];
-        const eccentricityDesc = objectData.eccentricity > 0.3 ? 'Highly elliptical' : 
-                                objectData.eccentricity > 0.1 ? 'Moderately elliptical' : 'Mildly elliptical';
         info = `
-            <h3>${objectName.charAt(0).toUpperCase() + objectName.slice(1)}</h3>
+            <h3>${getI18n('planet_' + objectName)}</h3>
             <div id="preview-placeholder"></div>
-            <p><strong>Type:</strong> Dwarf Planet</p>
-            <p><strong>Location:</strong> ${objectData.type}</p>
-            <p><strong>Distance:</strong> ${objectData.distance} AU</p>
-            <p><strong>Radius:</strong> ${objectData.size} Earth radii</p>
-            <p><strong>Inclination:</strong> ${objectData.inclination}° ${objectData.inclination > 20 ? '(Highly inclined)' : ''}</p>
-            <p><strong>Eccentricity:</strong> ${objectData.eccentricity} (${eccentricityDesc})</p>
-            <p><strong>Orbit:</strong> ${objectData.eccentricity > 0.2 ? 'Highly elliptical and tilted' : 'Elliptical'}</p>
+            <p>${getI18n('planet_' + objectName + '_desc')}</p>
+            <p><strong>${getI18n('type') || 'Type'}:</strong> ${getI18n('planet_' + objectName + '_type')}</p>
+            <p><strong>${getI18n('distance') || 'Distance'}:</strong> ${getI18n('planet_' + objectName + '_distance')}</p>
+            <p><strong>${getI18n('radius') || 'Radius'}:</strong> ${getI18n('planet_' + objectName + '_radius')}</p>
+            <p><strong>${getI18n('inclination') || 'Inclination'}:</strong> ${getI18n('planet_' + objectName + '_inclination')}</p>
+            <p><strong>${getI18n('speed') || 'Orbital Speed'}:</strong> ${getI18n('planet_' + objectName + '_speed')}</p>
+            <p><strong>${getI18n('orbit') || 'Orbit'}:</strong> ${getI18n('planet_' + objectName + '_orbit')}</p>
+            <p><em>${getI18n('planet_' + objectName + '_fact')}</em></p>
         `;
     }
 
@@ -995,10 +1032,11 @@ function focusPlanet(planetName) {
         return;
     }
     currentFocus = planetName;
-    document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
-    focusTargetDistance = null;
+    lastFocusedPlanet = planetName;
+    sidebarTab = 'info';
     updateFocusButtonStates(planetName);
     syncZoomSlider();
+    renderSidebarContent();
 }
 
 function resetCamera() {
@@ -1006,21 +1044,14 @@ function resetCamera() {
     camera.position.set(0, 500, 1000); // Match the init position
     camera.lookAt(0, 0, 0);
     focusTargetDistance = null;
-    document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
-
-    // Hide planet info and preview
-    const infoElement = document.getElementById('planet-info');
-    if (infoElement) {
-        infoElement.style.display = 'none';
-    }
-    
-    // Remove preview sphere from scene
+    sidebarTab = 'controls';
+    lastFocusedPlanet = null;
+    renderSidebarContent();
+    // ... các logic cũ khác ...
     if (previewSphere && previewScene) {
         previewScene.remove(previewSphere);
         previewSphere = null;
     }
-    
-    // Clear button states
     updateFocusButtonStates(null);
     syncZoomSlider();
 }
@@ -1084,43 +1115,31 @@ function updateFocusButtonStates(activePlanet) {
     }
 }
 
-// Zoom slider control flag to prevent circular updates
 let isUpdatingZoomSlider = false;
-
-// Zoom slider control function - simplified logic
 function setZoomSlider(sliderValue) {
-    if (isUpdatingZoomSlider) return; // Prevent circular updates
-    
+    if (isUpdatingZoomSlider) return;
     const slider = document.getElementById('zoomSlider');
     const label = document.getElementById('zoomSliderValue');
-    
-    // Direct mapping: slider value = distance
     const distance = sliderValue;
-    
+    if (slider) slider.value = sliderValue;
     if (label) label.textContent = Math.round(distance);
     
     if (currentFocus) {
         // Update focus target distance
         focusTargetDistance = distance;
     } else {
-        // Update free camera distance
-        const currentDirection = camera.position.clone().normalize();
-        camera.position.copy(currentDirection.multiplyScalar(distance));
+        const dir = camera.position.clone().normalize();
+        camera.position.copy(dir.multiplyScalar(distance));
     }
 }
 
-// Sync slider with current camera distance
 function syncZoomSlider() {
     const slider = document.getElementById('zoomSlider');
     const label = document.getElementById('zoomSliderValue');
-    
-    let currentDistance = 1000; // Default
-    
+    let distance = 1000;
     if (currentFocus && focusTargetDistance !== null) {
-        // Use stored focus distance
-        currentDistance = focusTargetDistance;
+        distance = focusTargetDistance;
     } else if (currentFocus) {
-        // Calculate current distance to focused object
         let target;
         if (currentFocus === 'sun') target = sun;
         else if (planets[currentFocus]) target = planets[currentFocus];
@@ -1133,16 +1152,206 @@ function syncZoomSlider() {
         // Free camera mode - distance from origin
         currentDistance = camera.position.length();
     }
-    
-    // Clamp to slider range
-    currentDistance = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, currentDistance));
-    
-    // Prevent circular updates
+    distance = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, distance));
     isUpdatingZoomSlider = true;
-    if (slider) slider.value = currentDistance;
-    if (label) label.textContent = Math.round(currentDistance);
+    if (slider) slider.value = distance;
+    if (label) label.textContent = Math.round(distance);
     isUpdatingZoomSlider = false;
 }
 
+// Sidebar show/hide logic
+function showSidebar() {
+    document.getElementById('sidebar').classList.remove('hide');
+    document.getElementById('open-sidebar').style.display = 'none';
+}
+function hideSidebar() {
+    document.getElementById('sidebar').classList.add('hide');
+    document.getElementById('open-sidebar').style.display = 'flex';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const closeBtn = document.getElementById('close-sidebar');
+    if (closeBtn) {
+        closeBtn.style.display = '';
+        closeBtn.onclick = hideSidebar;
+    }
+    const openBtn = document.getElementById('open-sidebar');
+    if (openBtn) {
+        openBtn.onclick = showSidebar;
+    }
+    // Khi click vào bất kỳ nút focus planet, show lại sidebar
+    document.getElementById('sidebar').addEventListener('click', (e) => {
+        if (e.target.closest('.planet-controls button')) {
+            showSidebar();
+        }
+    });
+});
+
 // Initialize when page loads
 window.addEventListener('load', init);
+
+// Render lại controls, info, planet-info vào sidebar khi loading xong
+function renderSidebarContent() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    sidebar.innerHTML = `
+        <div id="sidebar-header">
+            <button id="close-sidebar" style="position:absolute;top:12px;right:16px;z-index:10;">×</button>
+            <div id="sidebar-tabs">
+                <button id="tab-controls" class="${sidebarTab === 'controls' ? 'active' : ''}" ${sidebarTab === 'controls' ? 'disabled' : ''}>Điều khiển</button>
+                <button id="tab-info" class="${sidebarTab === 'info' ? 'active' : ''}" ${lastFocusedPlanet ? '' : 'disabled'}>Thông tin</button>
+            </div>
+        </div>
+        <div id="sidebar-scroll-content"></div>
+    `;
+    attachSidebarTabEvents();
+    renderSidebarTabContent();
+    setLanguage(currentLang);
+}
+
+function renderSidebarTabContent() {
+    const content = document.getElementById('sidebar-scroll-content');
+    if (!content) return;
+    if (sidebarTab === 'controls') {
+        // Render nút hành tinh bằng i18n
+        const planetButtons = [
+            'sun','mercury','venus','earth','mars','jupiter','saturn','uranus','neptune'
+        ].map(p => `<button data-planet="${p}" data-i18n="planet_${p}">${getI18n('planet_' + p)}</button>`).join('');
+        const dwarfButtons = [
+            'ceres','pluto','eris','haumea','makemake'
+        ].map(p => `<button data-planet="${p}" data-i18n="planet_${p}">${getI18n('planet_' + p)}</button>`).join('');
+        content.innerHTML = `
+            <select id="lang-select" style="margin: 10px 0; width: 100%;">
+                <option value="vi">Tiếng Việt</option>
+                <option value="en">English</option>
+            </select>
+            <div class="control-group">
+                <h3 data-i18n="time_speed">${getI18n('time_speed')}</h3>
+                <div class="slider-container">
+                    <input type="range" id="timeSpeedSlider" min="0" max="10" step="0.1" value="1">
+                    <span id="timeSpeedValue">1.0x</span>
+                </div>
+                <button id="pauseButton" data-i18n="pause">${getI18n('pause')}</button>
+            </div>
+            <div class="control-group">
+                <h3 data-i18n="movement_speed">${getI18n('movement_speed')}</h3>
+                <div class="slider-container">
+                    <input type="range" id="movementSpeedSlider" min="1" max="50" step="1" value="10">
+                    <span id="movementSpeedValue">5</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <h3 data-i18n="zoom">${getI18n('zoom')}</h3>
+                <div class="slider-container">
+                    <input type="range" id="zoomSlider" min="10" max="2000" step="1" value="1000">
+                    <span id="zoomSliderValue">1000</span>
+                </div>
+            </div>
+            <div class="control-group">
+                <h3 data-i18n="focus_planet">${getI18n('focus_planet')}</h3>
+                <p style="font-size: 11px; color: #ccc; margin: 0 0 5px 0;" data-i18n="click_again_unfocus">${getI18n('click_again_unfocus')}</p>
+                <div class="planet-controls">${planetButtons}</div>
+            </div>
+            <div class="control-group">
+                <h3 data-i18n="focus_dwarf_planet">${getI18n('focus_dwarf_planet')}</h3>
+                <p style="font-size: 11px; color: #ccc; margin: 0 0 5px 0;" data-i18n="click_again_unfocus">${getI18n('click_again_unfocus')}</p>
+                <div class="planet-controls">${dwarfButtons}</div>
+            </div>
+            <div class="control-group">
+                <h3 data-i18n="view_options">${getI18n('view_options')}</h3>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showOrbits" checked>
+                    <label for="showOrbits" data-i18n="show_orbits">${getI18n('show_orbits')}</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showMoons" checked>
+                    <label for="showMoons" data-i18n="show_moons">${getI18n('show_moons')}</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showDwarfPlanets" checked>
+                    <label for="showDwarfPlanets" data-i18n="show_dwarf_planets">${getI18n('show_dwarf_planets')}</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showAsteroidBelt" checked>
+                    <label for="showAsteroidBelt" data-i18n="show_asteroid_belt">${getI18n('show_asteroid_belt')}</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showKuiperBelt" checked>
+                    <label for="showKuiperBelt" data-i18n="show_kuiper_belt">${getI18n('show_kuiper_belt')}</label>
+                </div>
+                <button id="resetCameraBtn" data-i18n="reset_camera">${getI18n('reset_camera')}</button>
+            </div>
+            <div class="control-group" id="sidebar-info">
+                <div data-i18n="camera_free_roam">${getI18n('camera_free_roam')}</div>
+                <div data-i18n="controls">${getI18n('controls')}</div>
+                <div id="currentFocus">Focus: Free camera</div>
+            </div>
+        `;
+        attachSidebarEvents();
+    } else if (sidebarTab === 'info') {
+        content.innerHTML = `<div class="control-group" id="sidebar-planet-info"></div>`;
+        attachSidebarEvents();
+        // Render planet info nếu đang focus
+        if (lastFocusedPlanet) {
+            updatePlanetInfoDisplay(lastFocusedPlanet, planets[lastFocusedPlanet] || dwarfPlanets[lastFocusedPlanet] || sun);
+        }
+    }
+    setLanguage(currentLang);
+}
+
+function attachSidebarTabEvents() {
+    // Tab chuyển đổi
+    const tabControls = document.getElementById('tab-controls');
+    const tabInfo = document.getElementById('tab-info');
+    if (tabControls) tabControls.onclick = () => { sidebarTab = 'controls'; renderSidebarContent(); };
+    if (tabInfo && lastFocusedPlanet) tabInfo.onclick = () => { sidebarTab = 'info'; renderSidebarContent(); };
+    // Đóng sidebar, luôn gán lại event
+    const closeBtn = document.getElementById('close-sidebar');
+    if (closeBtn) closeBtn.onclick = hideSidebar;
+    // Mở sidebar, đổi ngôn ngữ, controls...
+    attachSidebarEvents();
+}
+
+function attachSidebarEvents() {
+    // Đóng sidebar
+    const closeBtn = document.getElementById('close-sidebar');
+    if (closeBtn) closeBtn.onclick = hideSidebar;
+    // Mở sidebar
+    const openBtn = document.getElementById('open-sidebar');
+    if (openBtn) openBtn.onclick = showSidebar;
+    // Đổi ngôn ngữ
+    const langSel = document.getElementById('lang-select');
+    if (langSel) langSel.onchange = (e) => setLanguage(e.target.value);
+    // Focus planet
+    document.querySelectorAll('.planet-controls button').forEach(btn => {
+        btn.onclick = function() {
+            focusPlanet(this.getAttribute('data-planet'));
+        };
+    });
+    // Reset camera
+    const resetBtn = document.getElementById('resetCameraBtn');
+    if (resetBtn) resetBtn.onclick = resetCamera;
+    // Pause
+    const pauseBtn = document.getElementById('pauseButton');
+    if (pauseBtn) pauseBtn.onclick = togglePause;
+    // Time speed
+    const timeSlider = document.getElementById('timeSpeedSlider');
+    if (timeSlider) timeSlider.oninput = function() { setTimeSpeed(parseFloat(this.value)); };
+    // Movement speed
+    const moveSlider = document.getElementById('movementSpeedSlider');
+    if (moveSlider) moveSlider.oninput = function() { setMovementSpeed(parseFloat(this.value)); };
+    // Zoom
+    const zoomSlider = document.getElementById('zoomSlider');
+    if (zoomSlider) zoomSlider.oninput = function() { setZoomSlider(parseFloat(this.value)); };
+    // Checkbox toggles
+    const orbits = document.getElementById('showOrbits');
+    if (orbits) orbits.onchange = toggleOrbits;
+    const moons = document.getElementById('showMoons');
+    if (moons) moons.onchange = toggleMoons;
+    const dwarfs = document.getElementById('showDwarfPlanets');
+    if (dwarfs) dwarfs.onchange = toggleDwarfPlanets;
+    const asteroids = document.getElementById('showAsteroidBelt');
+    if (asteroids) asteroids.onchange = toggleAsteroidBelt;
+    const kuiper = document.getElementById('showKuiperBelt');
+    if (kuiper) kuiper.onchange = toggleKuiperBelt;
+}
