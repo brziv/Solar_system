@@ -99,9 +99,10 @@ function init() {
     // Create scene
     scene = new THREE.Scene();
 
-    // Create camera
+    // Create camera with position that matches default zoom slider value (1000)
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500000);
-    camera.position.set(0, 500, 1000);
+    // Position camera at distance 1000 from origin (matching default slider value)
+    camera.position.set(0, 500, 1000); // Simple position at distance 1000
     camera.lookAt(0, 0, 0);
 
     // Create renderer
@@ -330,7 +331,7 @@ function createPlanet(name, data) {
 
 // Create a moon
 function createMoon(planetName, moonInfo) {
-    const geometry = new THREE.SphereGeometry(moonInfo.size * (SIZE_SCALE + 5), 16, 16); // Extra scaling for moon visibility
+    const geometry = new THREE.SphereGeometry(moonInfo.size * (SIZE_SCALE + 2), 16, 16); // Extra scaling for moon visibility
     let material;
 
     if (loadedTextures[moonInfo.name]) {
@@ -866,8 +867,8 @@ function updatePlanets() {
             const planetPos = planets[planetName].position;
             moons[planetName].forEach(moon => {
                 moon.userData.angle += moon.userData.speed * timeSpeed;
-                moon.position.x = planetPos.x + Math.cos(moon.userData.angle) * moon.userData.distance * 5; // Scaled up moon distance
-                moon.position.z = planetPos.z + Math.sin(moon.userData.angle) * moon.userData.distance * 5;
+                moon.position.x = planetPos.x + Math.cos(moon.userData.angle) * moon.userData.distance * 2; // Reduced from 5 to 2
+                moon.position.z = planetPos.z + Math.sin(moon.userData.angle) * moon.userData.distance * 2;
                 moon.rotation.y += 0.005 * timeSpeed;
             });
         }
@@ -887,7 +888,16 @@ function updateCameraFocus() {
         }
         if (target) {
             const isMoving = keys.w || keys.s || keys.a || keys.d || keys.space || keys.ctrl;
-            let defaultDistance = target === sun ? 500 : 45;
+            let defaultDistance;
+            if (target === sun) {
+                defaultDistance = 500;
+            } else if (currentFocus === 'jupiter' || currentFocus === 'saturn') {
+                defaultDistance = 150; // Larger planets need more distance
+            } else if (currentFocus === 'uranus' || currentFocus === 'neptune') {
+                defaultDistance = 120; // Outer planets
+            } else {
+                defaultDistance = 45; // Inner planets and dwarf planets
+            }
             if (focusTargetDistance === null) focusTargetDistance = defaultDistance;
             if (!isMoving) {
                 let direction;
@@ -1031,7 +1041,7 @@ function focusPlanet(planetName) {
 
 function resetCamera() {
     currentFocus = null;
-    camera.position.set(0, 500, 1000);
+    camera.position.set(0, 500, 1000); // Match the init position
     camera.lookAt(0, 0, 0);
     focusTargetDistance = null;
     sidebarTab = 'controls';
@@ -1113,7 +1123,9 @@ function setZoomSlider(sliderValue) {
     const distance = sliderValue;
     if (slider) slider.value = sliderValue;
     if (label) label.textContent = Math.round(distance);
+    
     if (currentFocus) {
+        // Update focus target distance
         focusTargetDistance = distance;
     } else {
         const dir = camera.position.clone().normalize();
@@ -1132,11 +1144,13 @@ function syncZoomSlider() {
         if (currentFocus === 'sun') target = sun;
         else if (planets[currentFocus]) target = planets[currentFocus];
         else if (dwarfPlanets[currentFocus]) target = dwarfPlanets[currentFocus];
+        
         if (target) {
-            distance = camera.position.distanceTo(target.position);
+            currentDistance = camera.position.distanceTo(target.position);
         }
     } else {
-        distance = camera.position.length();
+        // Free camera mode - distance from origin
+        currentDistance = camera.position.length();
     }
     distance = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, distance));
     isUpdatingZoomSlider = true;
