@@ -70,18 +70,19 @@ const moonData = {
 // Thêm biến toàn cục để lưu khoảng cách mong muốn khi focus
 let focusTargetDistance = null;
 
-// Đảo ngược logic slider: kéo sang phải là gần nhất
-const ZOOM_MIN = 45;   // Gần nhất
-const ZOOM_MAX = 1000; // Xa nhất
+// Zoom slider constants - simplified approach
+const ZOOM_MIN = 10;   // Closest zoom
+const ZOOM_MAX = 2000; // Farthest zoom
 
 // Initialize the solar system
 function init() {
     // Create scene
     scene = new THREE.Scene();
 
-    // Create camera
+    // Create camera with position that matches default zoom slider value (1000)
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500000);
-    camera.position.set(0, 500, 1000);
+    // Position camera at distance 1000 from origin (matching default slider value)
+    camera.position.set(0, 500, 1000); // Simple position at distance 1000
     camera.lookAt(0, 0, 0);
 
     // Create renderer
@@ -115,7 +116,11 @@ function init() {
 
     // Set up event listeners
     setupEventListeners();
-    syncZoomSlider();
+    
+    // Initialize zoom slider after DOM is ready
+    setTimeout(() => {
+        syncZoomSlider();
+    }, 100);
 }
 
 // Load all textures
@@ -303,7 +308,7 @@ function createPlanet(name, data) {
 
 // Create a moon
 function createMoon(planetName, moonInfo) {
-    const geometry = new THREE.SphereGeometry(moonInfo.size * (SIZE_SCALE + 5), 16, 16); // Extra scaling for moon visibility
+    const geometry = new THREE.SphereGeometry(moonInfo.size * (SIZE_SCALE + 2), 16, 16); // Extra scaling for moon visibility
     let material;
 
     if (loadedTextures[moonInfo.name]) {
@@ -693,8 +698,20 @@ function onMouseWheel(event) {
         if (target) {
             const currentDistance = camera.position.distanceTo(target.position);
             const factor = event.deltaY > 0 ? 1.1 : 0.9;
-            const minDistance = (target.geometry ? target.geometry.parameters.radius : 1) * 3;
-            const maxDistance = 20000;
+            
+            // Set reasonable minimum distances based on object type
+            let minDistance;
+            if (target === sun) {
+                minDistance = 50; // Sun minimum distance
+            } else if (currentFocus === 'jupiter' || currentFocus === 'saturn') {
+                minDistance = 25; // Large planets
+            } else if (currentFocus === 'uranus' || currentFocus === 'neptune') {
+                minDistance = 20; // Medium planets
+            } else {
+                minDistance = 15; // Small planets and dwarf planets
+            }
+            
+            const maxDistance = ZOOM_MAX;
             let newDistance = Math.max(minDistance, Math.min(maxDistance, currentDistance * factor));
             focusTargetDistance = newDistance;
             syncZoomSlider();
@@ -702,7 +719,7 @@ function onMouseWheel(event) {
     } else {
         const distance = camera.position.length();
         const factor = event.deltaY > 0 ? 1.1 : 0.9;
-        const newDistance = Math.max(300, Math.min(20000, distance * factor));
+        const newDistance = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, distance * factor));
         camera.position.normalize().multiplyScalar(newDistance);
         syncZoomSlider();
     }
@@ -830,8 +847,8 @@ function updatePlanets() {
             const planetPos = planets[planetName].position;
             moons[planetName].forEach(moon => {
                 moon.userData.angle += moon.userData.speed * timeSpeed;
-                moon.position.x = planetPos.x + Math.cos(moon.userData.angle) * moon.userData.distance * 5; // Scaled up moon distance
-                moon.position.z = planetPos.z + Math.sin(moon.userData.angle) * moon.userData.distance * 5;
+                moon.position.x = planetPos.x + Math.cos(moon.userData.angle) * moon.userData.distance * 2; // Reduced from 5 to 2
+                moon.position.z = planetPos.z + Math.sin(moon.userData.angle) * moon.userData.distance * 2;
                 moon.rotation.y += 0.005 * timeSpeed;
             });
         }
@@ -851,7 +868,16 @@ function updateCameraFocus() {
         }
         if (target) {
             const isMoving = keys.w || keys.s || keys.a || keys.d || keys.space || keys.ctrl;
-            let defaultDistance = target === sun ? 500 : 45;
+            let defaultDistance;
+            if (target === sun) {
+                defaultDistance = 500;
+            } else if (currentFocus === 'jupiter' || currentFocus === 'saturn') {
+                defaultDistance = 150; // Larger planets need more distance
+            } else if (currentFocus === 'uranus' || currentFocus === 'neptune') {
+                defaultDistance = 120; // Outer planets
+            } else {
+                defaultDistance = 45; // Inner planets and dwarf planets
+            }
             if (focusTargetDistance === null) focusTargetDistance = defaultDistance;
             if (!isMoving) {
                 let direction;
@@ -977,7 +1003,7 @@ function focusPlanet(planetName) {
 
 function resetCamera() {
     currentFocus = null;
-    camera.position.set(0, 500, 1000);
+    camera.position.set(0, 500, 1000); // Match the init position
     camera.lookAt(0, 0, 0);
     focusTargetDistance = null;
     document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
@@ -1058,42 +1084,64 @@ function updateFocusButtonStates(activePlanet) {
     }
 }
 
-// Thêm hàm điều khiển zoom bằng slider
+// Zoom slider control flag to prevent circular updates
+let isUpdatingZoomSlider = false;
+
+// Zoom slider control function - simplified logic
 function setZoomSlider(sliderValue) {
+    if (isUpdatingZoomSlider) return; // Prevent circular updates
+    
     const slider = document.getElementById('zoomSlider');
     const label = document.getElementById('zoomSliderValue');
-    if (slider) slider.value = sliderValue;
-    // Tính khoảng cách thực tế: kéo phải là gần nhất
-    const distance = ZOOM_MAX - (sliderValue - ZOOM_MIN);
+    
+    // Direct mapping: slider value = distance
+    const distance = sliderValue;
+    
     if (label) label.textContent = Math.round(distance);
+    
     if (currentFocus) {
+        // Update focus target distance
         focusTargetDistance = distance;
     } else {
-        camera.position.normalize().multiplyScalar(distance);
+        // Update free camera distance
+        const currentDirection = camera.position.clone().normalize();
+        camera.position.copy(currentDirection.multiplyScalar(distance));
     }
 }
 
-// Cập nhật giá trị slider khi zoom bằng chuột hoặc khi focus thay đổi
+// Sync slider with current camera distance
 function syncZoomSlider() {
     const slider = document.getElementById('zoomSlider');
     const label = document.getElementById('zoomSliderValue');
-    let distance = 1000;
-    if (currentFocus) {
+    
+    let currentDistance = 1000; // Default
+    
+    if (currentFocus && focusTargetDistance !== null) {
+        // Use stored focus distance
+        currentDistance = focusTargetDistance;
+    } else if (currentFocus) {
+        // Calculate current distance to focused object
         let target;
         if (currentFocus === 'sun') target = sun;
         else if (planets[currentFocus]) target = planets[currentFocus];
         else if (dwarfPlanets[currentFocus]) target = dwarfPlanets[currentFocus];
+        
         if (target) {
-            distance = camera.position.distanceTo(target.position);
+            currentDistance = camera.position.distanceTo(target.position);
         }
     } else {
-        distance = camera.position.length();
+        // Free camera mode - distance from origin
+        currentDistance = camera.position.length();
     }
-    // Tính lại giá trị slider: kéo phải là gần nhất
-    let sliderValue = ZOOM_MAX - (distance - ZOOM_MIN);
-    sliderValue = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, sliderValue));
-    if (slider) slider.value = sliderValue;
-    if (label) label.textContent = Math.round(distance);
+    
+    // Clamp to slider range
+    currentDistance = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, currentDistance));
+    
+    // Prevent circular updates
+    isUpdatingZoomSlider = true;
+    if (slider) slider.value = currentDistance;
+    if (label) label.textContent = Math.round(currentDistance);
+    isUpdatingZoomSlider = false;
 }
 
 // Initialize when page loads
