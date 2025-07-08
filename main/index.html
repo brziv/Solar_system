@@ -93,6 +93,16 @@
                 <button onclick="resetCamera()">Reset camera</button>
             </div>
 
+            <div class="control-group">
+                <h3>Special effects</h3>
+                <button onclick="triggerMeteorShower()">🌠 Meteor Shower</button>
+                <button onclick="triggerSupernova()">💥 Supernova</button>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="autoEffects" checked onchange="toggleAutoEffects()">
+                    <label for="autoEffects">Auto effects</label>
+                </div>
+            </div>
+
         </div>
 
         <div id="info" style="display: none;">
