@@ -286,31 +286,87 @@ function createAsteroidBelt() {
     solarSystemGroup.add(asteroidBelt);
 }
 
-// Create kuiper belt
+// Create kuiper belt - More realistic structure and distribution
 function createKuiperBelt() {
-    const kuiperCount = 50000;
+    const kuiperCount = 100000;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(kuiperCount * 3);
+    const colors = new Float32Array(kuiperCount * 3);
 
     for (let i = 0; i < kuiperCount; i++) {
-        const distance = 30 + Math.random() * 20; // Real Kuiper belt range: 30-50 AU
-        const angle = Math.random() * Math.PI * 2;
-        const height = (Math.random() - 0.5) * 30; // Increased height variation
+        // Realistic Kuiper Belt structure: Classical belt (39-48 AU) + Scattered disk (30-100+ AU)
+        let distance, heightVariation, density;
+        
+        const rand = Math.random();
+        if (rand < 0.7) {
+            // Classical Kuiper Belt (70% of objects) - more dense, less scattered
+            distance = 39 + Math.random() * 9; // 39-48 AU
+            heightVariation = 10; // Relatively flat
+            density = 1.0;
+        } else if (rand < 0.9) {
+            // Inner scattered objects (20% of objects) 
+            distance = 30 + Math.random() * 20; // 30-50 AU
+            heightVariation = 25; // More scattered
+            density = 0.7;
+        } else {
+            // Outer scattered disk (10% of objects) - very scattered
+            distance = 50 + Math.random() * 50; // 50-100 AU
+            heightVariation = 40; // Highly inclined orbits
+            density = 0.3;
+        }
 
-        positions[i * 3] = Math.cos(angle) * distance * DISTANCE_SCALE;
+        const angle = Math.random() * Math.PI * 2;
+        
+        // Add some orbital resonances and gaps (like Neptune's influence)
+        // Reduce density near major resonances
+        const resonanceCheck = distance / 39.48; // Neptune distance ratio
+        if (Math.abs(resonanceCheck - 1.5) < 0.05 || // 3:2 resonance (Pluto-like)
+            Math.abs(resonanceCheck - 2.0) < 0.03) { // 2:1 resonance
+            if (Math.random() < 0.8) continue; // 80% chance to skip (create gap)
+        }
+
+        // Apply slight eccentricity to orbits
+        const eccentricity = Math.random() * 0.2; // 0-20% eccentricity
+        const eccRadius = distance * (1 + eccentricity * Math.cos(angle * 3)); // Varying distance
+
+        const height = (Math.random() - 0.5) * heightVariation * density;
+
+        positions[i * 3] = Math.cos(angle) * eccRadius * DISTANCE_SCALE;
         positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * distance * DISTANCE_SCALE;
+        positions[i * 3 + 2] = Math.sin(angle) * eccRadius * DISTANCE_SCALE;
+
+        // Color variation based on distance and type
+        let r, g, b;
+        if (distance < 45) {
+            // Classical KBOs - reddish (organic compounds)
+            r = 0.4 + Math.random() * 0.3;
+            g = 0.3 + Math.random() * 0.2;
+            b = 0.2 + Math.random() * 0.2;
+        } else {
+            // Scattered disk objects - more neutral/bluish
+            r = 0.2 + Math.random() * 0.2;
+            g = 0.3 + Math.random() * 0.2;
+            b = 0.5 + Math.random() * 0.3;
+        }
+
+        colors[i * 3] = r;
+        colors[i * 3 + 1] = g;
+        colors[i * 3 + 2] = b;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
     const material = new THREE.PointsMaterial({
-        color: 0x444466,
-        size: 2.0,
-        sizeAttenuation: false
+        vertexColors: true,
+        size: 1.8,
+        sizeAttenuation: true, // More realistic size scaling with distance
+        transparent: true,
+        opacity: 0.8
     });
 
     kuiperBelt = new THREE.Points(geometry, material);
+    kuiperBelt.name = 'kuiperBelt';
     solarSystemGroup.add(kuiperBelt);
 }
 

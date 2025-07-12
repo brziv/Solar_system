@@ -28,16 +28,23 @@ const planetData = {
 
 // Dwarf planet data with orbital inclinations and eccentricity - Realistic proportions and distances in AU
 const dwarfPlanetData = {
-    ceres: { size: 0.15, distance: 2.8, speed: 0.003, color: 0x8C7853, type: 'asteroid belt', inclination: 10.6, eccentricity: 0.076 },
+    // Main dwarf planets officially recognized by IAU
+    ceres: { size: 0.07, distance: 2.8, speed: 0.003, color: 0x8C7853, type: 'asteroid belt', inclination: 10.6, eccentricity: 0.076 },
     pluto: { size: 0.18, distance: 39.5, speed: 0.0006, color: 0xD4A574, type: 'kuiper belt', inclination: 17.2, eccentricity: 0.244 },
     eris: { size: 0.19, distance: 67.7, speed: 0.0005, color: 0xCCCCCC, type: 'scattered disk', inclination: 44.2, eccentricity: 0.436 },
-    haumea: { size: 0.12, distance: 43.3, speed: 0.0006, color: 0xFFFFFF, type: 'kuiper belt', inclination: 28.2, eccentricity: 0.189 },
-    makemake: { size: 0.11, distance: 45.8, speed: 0.0005, color: 0xD4A574, type: 'kuiper belt', inclination: 29.0, eccentricity: 0.159 }
+    haumea: { size: 0.15, distance: 43.3, speed: 0.0006, color: 0xFFFFFF, type: 'kuiper belt', inclination: 28.2, eccentricity: 0.189 },
+    makemake: { size: 0.11, distance: 45.8, speed: 0.0005, color: 0xD4A574, type: 'kuiper belt', inclination: 29.0, eccentricity: 0.159 },
+    
+    // Additional significant dwarf planets
+    sedna: { size: 0.08, distance: 76.0, speed: 0.0003, color: 0x8B4513, type: 'sednoid', inclination: 11.9, eccentricity: 0.855 },
+    quaoar: { size: 0.09, distance: 43.7, speed: 0.0006, color: 0x654321, type: 'kuiper belt', inclination: 8.0, eccentricity: 0.037 },
+    orcus: { size: 0.07, distance: 39.4, speed: 0.0006, color: 0x444444, type: 'kuiper belt', inclination: 20.6, eccentricity: 0.226 },
+    gonggong: { size: 0.10, distance: 67.3, speed: 0.0005, color: 0x8B0000, type: 'scattered disk', inclination: 30.8, eccentricity: 0.500 },
 };
 
-// Moon data - Realistic proportions
+// Moon data - Realistic proportions and distances
 const moonData = {
-    earth: [{ name: 'moon', size: 0.27, distance: 15, speed: 0.02, color: 0x969696 }]
+    earth: [{ name: 'moon', size: 0.27, distance: 10, speed: 0.02, color: 0x969696 }],
 };
 
 // Texture paths configuration
@@ -60,5 +67,9 @@ const texturePaths = {
     pluto: 'textures/2k_pluto.jpg',
     eris: 'textures/4k_eris.jpg',
     haumea: 'textures/4k_haumea.jpg',
-    makemake: 'textures/4k_makemake.jpg'
+    makemake: 'textures/4k_makemake.jpg',
+    sedna: 'textures/sedna.jpg',
+    quaoar: 'textures/quaoar.jpg',
+    orcus: 'textures/orcus.jpg',
+    gonggong: 'textures/gonggong.jpg'
 };
