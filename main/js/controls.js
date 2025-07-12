@@ -144,7 +144,16 @@ function focusPlanet(planetName) {
         return;
     }
     currentFocus = planetName;
-    document.getElementById('currentFocus').textContent = `Focus: ${planetName.charAt(0).toUpperCase() + planetName.slice(1)}`;
+    
+    // Handle different object types for display name
+    let displayName = planetName;
+    if (cometData[planetName]) {
+        displayName = cometData[planetName].name;
+    } else {
+        displayName = planetName.charAt(0).toUpperCase() + planetName.slice(1);
+    }
+    
+    document.getElementById('currentFocus').textContent = `Focus: ${displayName}`;
     focusTargetDistance = null;
     updateFocusButtonStates(planetName);
     syncZoomSlider();
@@ -172,46 +181,6 @@ function resetCamera() {
     // Clear button states
     updateFocusButtonStates(null);
     syncZoomSlider();
-}
-
-function toggleOrbits() {
-    const show = document.getElementById('showOrbits').checked;
-    orbits.forEach(orbit => {
-        orbit.visible = show;
-    });
-    dwarfOrbits.forEach(orbit => {
-        orbit.visible = show;
-    });
-}
-
-function toggleMoons() {
-    const show = document.getElementById('showMoons').checked;
-    for (let planetName in moons) {
-        moons[planetName].forEach(moon => {
-            moon.visible = show;
-        });
-    }
-}
-
-function toggleAsteroidBelt() {
-    const show = document.getElementById('showAsteroidBelt').checked;
-    if (asteroidBelt) {
-        asteroidBelt.visible = show;
-    }
-}
-
-function toggleKuiperBelt() {
-    const show = document.getElementById('showKuiperBelt').checked;
-    if (kuiperBelt) {
-        kuiperBelt.visible = show;
-    }
-}
-
-function toggleDwarfPlanets() {
-    const show = document.getElementById('showDwarfPlanets').checked;
-    for (let dwarfName in dwarfPlanets) {
-        dwarfPlanets[dwarfName].visible = show;
-    }
 }
 
 // Update focus button states for visual feedback

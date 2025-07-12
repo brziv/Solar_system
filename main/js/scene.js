@@ -256,6 +256,44 @@ function createOrbits() {
         dwarfOrbits.push(orbit);
         solarSystemGroup.add(orbit);
     }
+
+    // Create comet orbits (highly elliptical)
+    for (let cometName in cometData) {
+        const data = cometData[cometName];
+        const points = [];
+        const semiMajorAxis = (data.perihelion + data.aphelion) / 2 * DISTANCE_SCALE;
+        const eccentricity = data.eccentricity;
+        const inclinationRad = (data.inclination || 0) * Math.PI / 180;
+
+        for (let i = 0; i <= 256; i++) { // Higher resolution for comet orbits
+            const angle = (i / 256) * Math.PI * 2;
+            
+            // Calculate elliptical orbit with high eccentricity
+            const r = (semiMajorAxis * (1 - eccentricity * eccentricity)) / 
+                      (1 + eccentricity * Math.cos(angle));
+            
+            const x = r * Math.cos(angle);
+            const z = r * Math.sin(angle);
+            
+            // Apply orbital inclination
+            const y = Math.sin(angle) * Math.sin(inclinationRad) * r * 0.5;
+
+            points.push(new THREE.Vector3(x, y, z));
+        }
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+            color: data.color,
+            transparent: true,
+            opacity: 0.3,
+            linewidth: 2
+        });
+
+        const orbit = new THREE.Line(geometry, material);
+        orbit.userData = { cometName, visible: true };
+        cometOrbits.push(orbit);
+        solarSystemGroup.add(orbit);
+    }
 }
 
 // Create asteroid belt
@@ -286,94 +324,338 @@ function createAsteroidBelt() {
     solarSystemGroup.add(asteroidBelt);
 }
 
-// Create kuiper belt - More realistic structure and distribution
+// Create kuiper belt
 function createKuiperBelt() {
-    const kuiperCount = 100000;
-    const geometry = new THREE.BufferGeometry();
+    const kuiperGeometry = new THREE.BufferGeometry();
+    const kuiperCount = 100000; // Very large number for dense belt
     const positions = new Float32Array(kuiperCount * 3);
     const colors = new Float32Array(kuiperCount * 3);
 
     for (let i = 0; i < kuiperCount; i++) {
-        // Realistic Kuiper Belt structure: Classical belt (39-48 AU) + Scattered disk (30-100+ AU)
-        let distance, heightVariation, density;
-        
+        let distance, height;
         const rand = Math.random();
+
+        // Different regions of the Kuiper Belt
         if (rand < 0.7) {
-            // Classical Kuiper Belt (70% of objects) - more dense, less scattered
-            distance = 39 + Math.random() * 9; // 39-48 AU
-            heightVariation = 10; // Relatively flat
-            density = 1.0;
+            // Classical Kuiper Belt (39-48 AU)
+            distance = 39 + Math.random() * 9;
+            height = (Math.random() - 0.5) * 60; // Thicker than asteroid belt
         } else if (rand < 0.9) {
-            // Inner scattered objects (20% of objects) 
-            distance = 30 + Math.random() * 20; // 30-50 AU
-            heightVariation = 25; // More scattered
-            density = 0.7;
+            // Scattered Disk (inner) (30-50 AU)
+            distance = 30 + Math.random() * 20;
+            height = (Math.random() - 0.5) * 100; // Even thicker
         } else {
-            // Outer scattered disk (10% of objects) - very scattered
-            distance = 50 + Math.random() * 50; // 50-100 AU
-            heightVariation = 40; // Highly inclined orbits
-            density = 0.3;
+            // Scattered Disk (outer) (50-100 AU)
+            distance = 50 + Math.random() * 50;
+            height = (Math.random() - 0.5) * 150; // Very thick
         }
+
+        distance *= DISTANCE_SCALE;
 
         const angle = Math.random() * Math.PI * 2;
-        
-        // Add some orbital resonances and gaps (like Neptune's influence)
-        // Reduce density near major resonances
-        const resonanceCheck = distance / 39.48; // Neptune distance ratio
-        if (Math.abs(resonanceCheck - 1.5) < 0.05 || // 3:2 resonance (Pluto-like)
-            Math.abs(resonanceCheck - 2.0) < 0.03) { // 2:1 resonance
-            if (Math.random() < 0.8) continue; // 80% chance to skip (create gap)
-        }
-
-        // Apply slight eccentricity to orbits
-        const eccentricity = Math.random() * 0.2; // 0-20% eccentricity
-        const eccRadius = distance * (1 + eccentricity * Math.cos(angle * 3)); // Varying distance
-
-        const height = (Math.random() - 0.5) * heightVariation * density;
-
-        positions[i * 3] = Math.cos(angle) * eccRadius * DISTANCE_SCALE;
+        positions[i * 3] = Math.cos(angle) * distance;
         positions[i * 3 + 1] = height;
-        positions[i * 3 + 2] = Math.sin(angle) * eccRadius * DISTANCE_SCALE;
+        positions[i * 3 + 2] = Math.sin(angle) * distance;
 
-        // Color variation based on distance and type
-        let r, g, b;
-        if (distance < 45) {
-            // Classical KBOs - reddish (organic compounds)
-            r = 0.4 + Math.random() * 0.3;
-            g = 0.3 + Math.random() * 0.2;
-            b = 0.2 + Math.random() * 0.2;
+        // Color variation for icy objects based on real observations
+        const rand2 = Math.random();
+        let brightness, redTint, grayTint, blueTint;
+        
+        if (rand2 < 0.4) {
+            // Neutral/gray objects (like Pluto's moon Charon)
+            brightness = 0.6 + Math.random() * 0.3;
+            redTint = brightness * 0.9;
+            grayTint = brightness * 0.9;
+            blueTint = brightness * 0.95;
+        } else if (rand2 < 0.7) {
+            // Reddish objects (like Pluto, Makemake) - tholins from radiation
+            brightness = 0.5 + Math.random() * 0.4;
+            redTint = brightness;
+            grayTint = brightness * 0.7;
+            blueTint = brightness * 0.6;
+        } else if (rand2 < 0.85) {
+            // Very red objects (like Sedna, some classical KBOs)
+            brightness = 0.4 + Math.random() * 0.3;
+            redTint = brightness * 1.1;
+            grayTint = brightness * 0.6;
+            blueTint = brightness * 0.5;
         } else {
-            // Scattered disk objects - more neutral/bluish
-            r = 0.2 + Math.random() * 0.2;
-            g = 0.3 + Math.random() * 0.2;
-            b = 0.5 + Math.random() * 0.3;
+            // Bright icy objects (like Haumea, fresh ice surfaces)
+            brightness = 0.7 + Math.random() * 0.3;
+            redTint = brightness * 0.95;
+            grayTint = brightness * 0.98;
+            blueTint = brightness * 1.0; // Slightly blue for fresh ice
         }
-
-        colors[i * 3] = r;
-        colors[i * 3 + 1] = g;
-        colors[i * 3 + 2] = b;
+        
+        colors[i * 3] = Math.min(1.0, redTint);      // R
+        colors[i * 3 + 1] = Math.min(1.0, grayTint); // G
+        colors[i * 3 + 2] = Math.min(1.0, blueTint); // B
     }
 
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    kuiperGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    kuiperGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    const material = new THREE.PointsMaterial({
+    const kuiperMaterial = new THREE.PointsMaterial({
+        size: 0.8,
         vertexColors: true,
-        size: 1.8,
-        sizeAttenuation: true, // More realistic size scaling with distance
+        sizeAttenuation: true,
         transparent: true,
         opacity: 0.8
     });
 
-    kuiperBelt = new THREE.Points(geometry, material);
-    kuiperBelt.name = 'kuiperBelt';
+    kuiperBelt = new THREE.Points(kuiperGeometry, kuiperMaterial);
     solarSystemGroup.add(kuiperBelt);
+}
+
+// Create Oort Cloud - spherical shell of distant comets
+function createOortCloud() {
+    const oortGeometry = new THREE.BufferGeometry();
+    const particleCount = oortCloudData.particleCount;
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+        // Generate random point on spherical shell
+        const phi = Math.random() * Math.PI * 2; // Azimuthal angle
+        const cosTheta = Math.random() * 2 - 1;   // Polar angle (uniform distribution)
+        const theta = Math.acos(cosTheta);
+        
+        // Random radius within the Oort Cloud shell
+        const minRadius = oortCloudData.innerRadius * DISTANCE_SCALE;
+        const maxRadius = oortCloudData.outerRadius * DISTANCE_SCALE;
+        const radius = minRadius + Math.random() * (maxRadius - minRadius);
+        
+        // Convert spherical to cartesian coordinates
+        const x = radius * Math.sin(theta) * Math.cos(phi);
+        const y = radius * Math.sin(theta) * Math.sin(phi);
+        const z = radius * Math.cos(theta);
+        
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+        
+        // Assign colors based on comet composition
+        const rand = Math.random();
+        let color;
+        if (rand < 0.4) {
+            // Icy comets (most common)
+            color = new THREE.Color(oortCloudData.colors.icy);
+        } else if (rand < 0.7) {
+            // Dirty ice comets
+            color = new THREE.Color(oortCloudData.colors.dirty);
+        } else if (rand < 0.9) {
+            // Carbonaceous comets
+            color = new THREE.Color(oortCloudData.colors.carbonaceous);
+        } else {
+            // Methane-rich comets
+            color = new THREE.Color(oortCloudData.colors.methane);
+        }
+        
+        // Add some brightness variation
+        const brightness = 0.3 + Math.random() * 0.7;
+        colors[i * 3] = color.r * brightness;
+        colors[i * 3 + 1] = color.g * brightness;
+        colors[i * 3 + 2] = color.b * brightness;
+        
+        // Vary particle sizes slightly
+        sizes[i] = oortCloudData.size * (0.5 + Math.random() * 0.5);
+    }
+
+    oortGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    oortGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    oortGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const oortMaterial = new THREE.PointsMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: oortCloudData.opacity,
+        size: oortCloudData.size,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+    oortCloud = new THREE.Points(oortGeometry, oortMaterial);
+    scene.add(oortCloud); // Add directly to scene, not solar system group
+}
+
+// Create comets with tails
+function createComets() {
+    comets = {};
+    
+    for (let cometName in cometData) {
+        const data = cometData[cometName];
+        
+        // Create comet nucleus
+        const nucleusGeometry = new THREE.SphereGeometry(data.size * SIZE_SCALE, 8, 8);
+        const nucleusMaterial = new THREE.MeshLambertMaterial({
+            color: data.color,
+            emissive: data.color,
+            emissiveIntensity: 0.2
+        });
+        
+        const nucleus = new THREE.Mesh(nucleusGeometry, nucleusMaterial);
+        
+        // Create comet tail using a cone geometry
+        const tailGeometry = new THREE.ConeGeometry(0.5, data.tailLength * 15, 12, 1, true);
+        const tailMaterial = new THREE.MeshBasicMaterial({
+            color: data.color,
+            transparent: true,
+            opacity: 0,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+        tail.rotation.x = Math.PI / 2; // Point tail away from sun
+        
+        // Create enhanced tail particle system for more realistic effect
+        const particleCount = 500; // Increased particle count
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleColors = new Float32Array(particleCount * 3);
+        const particleSizes = new Float32Array(particleCount);
+        const particleVelocities = new Float32Array(particleCount * 3);
+        const particleAges = new Float32Array(particleCount);
+        
+        for (let i = 0; i < particleCount; i++) {
+            // Create tail particles extending away from sun
+            const distance = Math.random() * data.tailLength * 15;
+            const spread = (Math.random() - 0.5) * distance * 0.1; // Wider spread for longer distances
+            
+            particlePositions[i * 3] = spread * (Math.random() - 0.5);
+            particlePositions[i * 3 + 1] = spread * (Math.random() - 0.5);
+            particlePositions[i * 3 + 2] = -distance;
+            
+            // Random initial velocities for particle movement
+            particleVelocities[i * 3] = (Math.random() - 0.5) * 0.2;
+            particleVelocities[i * 3 + 1] = (Math.random() - 0.5) * 0.2;
+            particleVelocities[i * 3 + 2] = -Math.random() * 0.5 - 0.1; // Always moving away from comet
+            
+            // Random age for particle lifecycle
+            particleAges[i] = Math.random();
+            
+            // Color based on comet color with slight variation
+            const color = new THREE.Color(data.color);
+            const brightness = 0.5 + Math.random() * 0.5;
+            particleColors[i * 3] = color.r * brightness;
+            particleColors[i * 3 + 1] = color.g * brightness;
+            particleColors[i * 3 + 2] = color.b * brightness;
+            
+            particleSizes[i] = Math.random() * 4 + 1;
+        }
+        
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+        particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+        
+        // Store custom attributes for animation
+        particleGeometry.userData = {
+            velocities: particleVelocities,
+            ages: particleAges,
+            maxAge: 100 + Math.random() * 100,
+            tailLength: data.tailLength
+        };
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0,
+            size: 3,
+            sizeAttenuation: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        
+        // Create gas tail (separate from dust tail)
+        const gasParticleCount = 300;
+        const gasGeometry = new THREE.BufferGeometry();
+        const gasPositions = new Float32Array(gasParticleCount * 3);
+        const gasColors = new Float32Array(gasParticleCount * 3);
+        const gasSizes = new Float32Array(gasParticleCount);
+        const gasVelocities = new Float32Array(gasParticleCount * 3);
+        
+        for (let i = 0; i < gasParticleCount; i++) {
+            const distance = Math.random() * data.tailLength * 20;
+            const spread = distance * 0.05; // Narrower gas tail
+            
+            gasPositions[i * 3] = (Math.random() - 0.5) * spread;
+            gasPositions[i * 3 + 1] = (Math.random() - 0.5) * spread;
+            gasPositions[i * 3 + 2] = -distance;
+            
+            // Gas moves faster than dust
+            gasVelocities[i * 3] = (Math.random() - 0.5) * 0.1;
+            gasVelocities[i * 3 + 1] = (Math.random() - 0.5) * 0.1;
+            gasVelocities[i * 3 + 2] = -Math.random() * 1.0 - 0.5;
+            
+            // Blue-white color for gas tail
+            const brightness = 0.3 + Math.random() * 0.7;
+            gasColors[i * 3] = brightness * 0.7;     // R
+            gasColors[i * 3 + 1] = brightness * 0.8; // G  
+            gasColors[i * 3 + 2] = brightness;       // B (more blue)
+            
+            gasSizes[i] = Math.random() * 2 + 0.5;
+        }
+        
+        gasGeometry.setAttribute('position', new THREE.BufferAttribute(gasPositions, 3));
+        gasGeometry.setAttribute('color', new THREE.BufferAttribute(gasColors, 3));
+        gasGeometry.setAttribute('size', new THREE.BufferAttribute(gasSizes, 1));
+        gasGeometry.userData = {
+            velocities: gasVelocities,
+            tailLength: data.tailLength
+        };
+        
+        const gasMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0,
+            size: 2,
+            sizeAttenuation: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        const gasParticles = new THREE.Points(gasGeometry, gasMaterial);
+        
+        // Group comet components
+        const cometGroup = new THREE.Group();
+        cometGroup.add(nucleus);
+        cometGroup.add(tail);
+        cometGroup.add(particles);
+        cometGroup.add(gasParticles);
+        
+        // Set initial position based on perihelion
+        const initialDistance = data.perihelion * DISTANCE_SCALE;
+        cometGroup.position.set(initialDistance, 0, 0);
+        
+        // Store references and data
+        cometGroup.userData = {
+            ...data,
+            name: cometName,
+            angle: 0,
+            nucleus: nucleus,
+            tail: tail,
+            particles: particles,
+            gasParticles: gasParticles,
+            tailMaterial: tailMaterial,
+            particleMaterial: particleMaterial,
+            gasMaterial: gasMaterial,
+            semiMajorAxis: (data.perihelion + data.aphelion) / 2,
+            originalDistance: (data.perihelion + data.aphelion) / 2
+        };
+        
+        comets[cometName] = cometGroup;
+        solarSystemGroup.add(cometGroup);
+    }
 }
 
 // Create the solar system
 function createSolarSystem() {
     // Create starfield background
-    createStarfield();
+    //createStarfield();
 
     // Create sun
     createSun();
@@ -405,4 +687,10 @@ function createSolarSystem() {
 
     // Create kuiper belt
     createKuiperBelt();
+
+    // Create Oort Cloud
+    createOortCloud();
+
+    // Create comets
+    createComets();
 }

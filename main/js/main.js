@@ -3,9 +3,9 @@
 
 // Global variables
 let scene, camera, renderer;
-let sun, planets = {}, moons = {}, dwarfPlanets = {};
-let orbits = [], dwarfOrbits = [];
-let asteroidBelt, kuiperBelt;
+let sun, planets = {}, moons = {}, dwarfPlanets = {}, comets = {};
+let orbits = [], dwarfOrbits = [], cometOrbits = [];
+let asteroidBelt, kuiperBelt, oortCloud;
 let timeSpeed = 1;
 let movementSpeed = 10;
 let currentFocus = null;
@@ -44,7 +44,7 @@ function init() {
     scene = new THREE.Scene();
 
     // Create camera with position that matches default zoom slider value (1000)
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500000);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000000);
     camera.position.set(1000, 25000, 10000);
     camera.lookAt(0, 0, 0);
 

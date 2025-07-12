@@ -34,7 +34,7 @@ const dwarfPlanetData = {
     eris: { size: 0.19, distance: 67.7, speed: 0.0005, color: 0xCCCCCC, type: 'scattered disk', inclination: 44.2, eccentricity: 0.436 },
     haumea: { size: 0.15, distance: 43.3, speed: 0.0006, color: 0xFFFFFF, type: 'kuiper belt', inclination: 28.2, eccentricity: 0.189 },
     makemake: { size: 0.11, distance: 45.8, speed: 0.0005, color: 0xD4A574, type: 'kuiper belt', inclination: 29.0, eccentricity: 0.159 },
-    
+
     // Additional significant dwarf planets
     sedna: { size: 0.08, distance: 76.0, speed: 0.0003, color: 0x8B4513, type: 'sednoid', inclination: 11.9, eccentricity: 0.855 },
     quaoar: { size: 0.09, distance: 43.7, speed: 0.0006, color: 0x654321, type: 'kuiper belt', inclination: 8.0, eccentricity: 0.037 },
@@ -46,6 +46,126 @@ const dwarfPlanetData = {
 const moonData = {
     earth: [{ name: 'moon', size: 0.27, distance: 10, speed: 0.02, color: 0x969696 }],
 };
+
+// Comet data with highly eccentric orbits and tail effects
+const cometData = {
+    halley: {
+        name: "Halley",
+        size: 0.02,
+        perihelion: 0.59,
+        aphelion: 35.1,
+        eccentricity: 0.967,
+        inclination: 162.3,
+        speed: 0.0008,
+        color: 0xCCCCFF,
+        tailLength: 8,
+        tailOpacity: 0.6,
+        period: 76,
+        nucleus: {
+            rotation: 0.02,
+            tumble: 0.005
+        }
+    },
+    haleBopp: {
+        name: "Hale-Bopp",
+        size: 0.03,
+        perihelion: 0.91,
+        aphelion: 370,
+        eccentricity: 0.995,
+        inclination: 89.4,
+        speed: 0.0003,
+        color: 0xFFCCCC,
+        tailLength: 12,
+        tailOpacity: 0.7,
+        period: 2533,
+        nucleus: {
+            rotation: 0.015,
+            tumble: 0.003
+        }
+    },
+    hyakutake: {
+        name: "Hyakutake",
+        size: 0.022,
+        perihelion: 0.23,
+        aphelion: 3410,
+        eccentricity: 0.9998,
+        inclination: 124.9,
+        speed: 0.0002,
+        color: 0xCCFFFF,
+        tailLength: 15,
+        tailOpacity: 0.8,
+        period: 72000,
+        nucleus: {
+            rotation: 0.012,
+            tumble: 0.002
+        }
+    },
+    mcnaught: {
+        name: "McNaught",
+        size: 0.025,
+        perihelion: 0.17,
+        aphelion: 3200,
+        eccentricity: 0.9999,
+        inclination: 77.8,
+        speed: 0.0001,
+        color: 0xFFFFCC,
+        tailLength: 18,
+        tailOpacity: 0.9,
+        period: 92600,
+        nucleus: {
+            rotation: 0.010,
+            tumble: 0.001
+        }
+    },
+    neowise: {
+        name: "NEOWISE",
+        size: 0.020,
+        perihelion: 0.29,
+        aphelion: 715,
+        eccentricity: 0.9992,
+        inclination: 128.9,
+        speed: 0.0002,
+        color: 0xFFEECC,
+        tailLength: 10,
+        tailOpacity: 0.7,
+        period: 6800,
+        nucleus: {
+            rotation: 0.014,
+            tumble: 0.003
+        }
+    },
+
+    bernstein: {
+        name: "Bernardinelli–Bernstein",
+        size: 0.15,
+        perihelion: 10.9,
+        aphelion: 40000,
+        eccentricity: 0.999,
+        inclination: 95,
+        speed: 0.00005,
+        color: 0xBBBBFF,
+        tailLength: 6,
+        tailOpacity: 0.4,
+        period: 4000000,
+        nucleus: { rotation: 0.006, tumble: 0.001 }
+    }
+};
+
+// Oort Cloud configuration - spherical shell of comets
+const oortCloudData = {
+    innerRadius: 2000,         // ~2,000 AU - inner edge of Oort Cloud
+    outerRadius: 100000,       // ~100,000 AU - outer edge of Oort Cloud
+    particleCount: 2000000,    // Number of comet nuclei to show
+    opacity: 0.25,             // Slightly more visible
+    size: 1.0,                 // Size of points (adjust depending on renderer)
+    colors: {
+        icy: 0xCCDDFF,         // Fresh ice - blue-white
+        dirty: 0x998877,       // Dirty ice - brownish
+        carbonaceous: 0x665544,// Carbon-rich - dark brown
+        methane: 0xFFEEDD      // Methane ice - yellowish
+    }
+};
+
 
 // Texture paths configuration
 const texturePaths = {

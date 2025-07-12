@@ -16,8 +16,8 @@
             <div class="control-group">
                 <h3>Time speed</h3>
                 <div class="slider-container">
-                    <input type="range" id="timeSpeedSlider" min="0" max="10" step="0.1" value="1" 
-                           oninput="setTimeSpeed(parseFloat(this.value))">
+                    <input type="range" id="timeSpeedSlider" min="0" max="20" step="0.1" value="1"
+                        oninput="setTimeSpeed(parseFloat(this.value))">
                     <span id="timeSpeedValue">1.0x</span>
                 </div>
                 <button id="pauseButton" onclick="togglePause()">⏸ Pause</button>
@@ -26,8 +26,8 @@
             <div class="control-group">
                 <h3>Movement speed</h3>
                 <div class="slider-container">
-                    <input type="range" id="movementSpeedSlider" min="1" max="50" step="1" value="10" 
-                           oninput="setMovementSpeed(parseFloat(this.value))">
+                    <input type="range" id="movementSpeedSlider" min="1" max="10000" step="1" value="5"
+                        oninput="setMovementSpeed(parseFloat(this.value))">
                     <span id="movementSpeedValue">5</span>
                 </div>
             </div>
@@ -65,27 +65,21 @@
             </div>
 
             <div class="control-group">
+                <h3>Focus comet</h3>
+                <p style="font-size: 11px; color: #ccc; margin: 0 0 5px 0;">Click again to unfocus</p>
+                <div class="planet-controls">
+                    <button onclick="focusPlanet('halley')">Halley</button>
+                    <button onclick="focusPlanet('haleBopp')">Hale-Bopp</button>
+                    <button onclick="focusPlanet('hyakutake')">Hyakutake</button>
+                    <button onclick="focusPlanet('mcnaught')">McNaught</button>
+                    <button onclick="focusPlanet('neowise')">NEOWISE</button>
+                    <button onclick="focusPlanet('bernstein')">Bernstein</button>
+                </div>
+            </div>
+
+
+            <div class="control-group">
                 <h3>View options</h3>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showOrbits" checked onchange="toggleOrbits()">
-                    <label for="showOrbits">Show orbits</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showMoons" checked onchange="toggleMoons()">
-                    <label for="showMoons">Show moons</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showDwarfPlanets" checked onchange="toggleDwarfPlanets()">
-                    <label for="showDwarfPlanets">Show dwarf planets</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showAsteroidBelt" checked onchange="toggleAsteroidBelt()">
-                    <label for="showAsteroidBelt">Show asteroid belt</label>
-                </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showKuiperBelt" checked onchange="toggleKuiperBelt()">
-                    <label for="showKuiperBelt">Show Kuiper belt</label>
-                </div>
                 <button onclick="resetCamera()">Reset camera</button>
             </div>
 

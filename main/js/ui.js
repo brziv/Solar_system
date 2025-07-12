@@ -90,12 +90,36 @@ function updatePreviewSphere(objectName, objectData) {
             previewSphere.add(rings);
         }
     } else if (dwarfPlanets[objectName]) {
-        geometry = new THREE.SphereGeometry(size, 24, 24);
+        geometry = new THREE.SphereGeometry(size, 16, 16);
         if (loadedTextures[objectName]) {
             material = new THREE.MeshLambertMaterial({ map: loadedTextures[objectName] });
         } else {
             material = new THREE.MeshLambertMaterial({ color: objectData.color });
         }
+    } else if (comets[objectName]) {
+        // Create comet nucleus for preview
+        geometry = new THREE.SphereGeometry(size * 3, 8, 8); // Slightly larger for visibility
+        material = new THREE.MeshLambertMaterial({ 
+            color: objectData.color,
+            emissive: objectData.color,
+            emissiveIntensity: 0.3
+        });
+        
+        // Add a simple tail effect for preview
+        const tailGeometry = new THREE.ConeGeometry(size * 0.5, size * 8, 6);
+        const tailMaterial = new THREE.MeshBasicMaterial({
+            color: objectData.color,
+            transparent: true,
+            opacity: 0.4
+        });
+        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+        tail.rotation.x = Math.PI / 2;
+        tail.position.z = -size * 4;
+        
+        previewSphere = new THREE.Group();
+        const nucleus = new THREE.Mesh(geometry, material);
+        previewSphere.add(nucleus);
+        previewSphere.add(tail);
     }
     
     // Create sphere if not already created (for Saturn)
@@ -163,6 +187,30 @@ function updatePlanetInfoDisplay(objectName, object) {
             <p><strong>Inclination:</strong> ${objectData.inclination}° ${objectData.inclination > 20 ? '(Highly inclined)' : ''}</p>
             <p><strong>Eccentricity:</strong> ${objectData.eccentricity} (${eccentricityDesc})</p>
             <p><strong>Orbit:</strong> ${objectData.eccentricity > 0.2 ? 'Highly elliptical and tilted' : 'Elliptical'}</p>
+        `;
+    } else if (comets[objectName]) {
+        objectData = cometData[objectName];
+        const eccentricityDesc = objectData.eccentricity > 0.9 ? 'Extremely elliptical' : 
+                                objectData.eccentricity > 0.7 ? 'Highly elliptical' : 'Moderately elliptical';
+        
+        // Calculate current distance for display
+        const currentDistance = Math.sqrt(
+            object.position.x * object.position.x + 
+            object.position.y * object.position.y + 
+            object.position.z * object.position.z
+        ) / DISTANCE_SCALE;
+        
+        info = `
+            <h3>${objectData.name}</h3>
+            <div id="preview-placeholder"></div>
+            <p><strong>Type:</strong> Comet</p>
+            <p><strong>Current Distance:</strong> ${currentDistance.toFixed(1)} AU</p>
+            <p><strong>Perihelion:</strong> ${objectData.perihelion} AU (closest)</p>
+            <p><strong>Aphelion:</strong> ${objectData.aphelion} AU (farthest)</p>
+            <p><strong>Orbital Period:</strong> ${objectData.period} years</p>
+            <p><strong>Inclination:</strong> ${objectData.inclination}° ${objectData.inclination > 90 ? '(Retrograde)' : ''}</p>
+            <p><strong>Eccentricity:</strong> ${objectData.eccentricity} (${eccentricityDesc})</p>
+            <p><strong>Tail Activity:</strong> ${currentDistance < 3 ? 'Very Active' : currentDistance < 5 ? 'Active' : 'Minimal'}</p>
         `;
     }
 
