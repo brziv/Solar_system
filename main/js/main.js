@@ -45,8 +45,7 @@ function init() {
 
     // Create camera with position that matches default zoom slider value (1000)
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500000);
-    // Position camera at distance 1000 from origin (matching default slider value)
-    camera.position.set(0, 500, 1000); // Simple position at distance 1000
+    camera.position.set(1000, 25000, 10000);
     camera.lookAt(0, 0, 0);
 
     // Create renderer

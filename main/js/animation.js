@@ -157,7 +157,7 @@ function updateCameraFocus() {
                     direction = camera.position.clone().sub(target.position).normalize();
                 }
                 const cameraPos = target.position.clone().add(direction.multiplyScalar(focusTargetDistance));
-                camera.position.lerp(cameraPos, 0.1);
+                camera.position.lerp(cameraPos, 0.025);
             }
             camera.lookAt(target.position);
             updatePlanetInfoDisplay(currentFocus, target);

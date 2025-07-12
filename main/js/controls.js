@@ -152,7 +152,7 @@ function focusPlanet(planetName) {
 
 function resetCamera() {
     currentFocus = null;
-    camera.position.set(0, 500, 1000); // Match the init position
+    camera.position.set(1000, 25000, 10000); // Match the init position
     camera.lookAt(0, 0, 0);
     focusTargetDistance = null;
     document.getElementById('currentFocus').textContent = 'Focus: Free Camera';
