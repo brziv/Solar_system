@@ -6,7 +6,7 @@ const DISTANCE_SCALE = 200;  // AU to pixels (1 AU = 200 pixels)
 const SIZE_SCALE = 4;       // Planet size scaling for visibility
 
 // Zoom slider constants
-const ZOOM_MIN = 10;   // Closest zoom
+const ZOOM_MIN = 100;   // Closest zoom
 const ZOOM_MAX = 2000; // Farthest zoom
 
 // Solar system data
@@ -100,21 +100,21 @@ const cometData = {
             tumble: 0.002
         }
     },
-    mcnaught: {
-        name: "McNaught",
-        size: 0.025,
-        perihelion: 0.17,
-        aphelion: 3200,
-        eccentricity: 0.9999,
-        inclination: 77.8,
-        speed: 0.0001,
-        color: 0xFFFFCC,
-        tailLength: 18,
-        tailOpacity: 0.9,
-        period: 92600,
+    encke: {
+        name: "Encke",
+        size: 0.018,
+        perihelion: 0.34,
+        aphelion: 4.1,
+        eccentricity: 0.850,
+        inclination: 11.8,
+        speed: 0.0012,
+        color: 0xCCEEDD,
+        tailLength: 5,
+        tailOpacity: 0.5,
+        period: 3.3,
         nucleus: {
-            rotation: 0.010,
-            tumble: 0.001
+            rotation: 0.018,
+            tumble: 0.004
         }
     },
     neowise: {

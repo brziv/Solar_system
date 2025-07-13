@@ -73,7 +73,7 @@ function updatePlanets() {
     updateComets();
 }
 
-// Update comets with elliptical orbits and dynamic tails
+// Update comets with stunning visual effects (based on ESA reference image)
 function updateComets() {
     if (isPaused) return;
 
@@ -81,10 +81,10 @@ function updateComets() {
         const comet = comets[cometName];
         const userData = comet.userData;
 
-        // Update orbital position using elliptical orbit formula
+        // Update orbital position using elliptical orbit
         userData.angle += userData.speed * timeSpeed;
         
-        // Calculate elliptical orbit with high eccentricity
+        // Calculate elliptical orbit
         const eccentricity = userData.eccentricity;
         const semiMajorAxis = userData.semiMajorAxis * DISTANCE_SCALE;
         
@@ -105,130 +105,130 @@ function updateComets() {
 
         comet.position.set(x, y, z);
 
-        // Calculate distance to sun for tail effects
+        // Calculate distance to sun for activity levels
         const distanceToSun = Math.sqrt(x * x + y * y + z * z);
-        const sunDistance = distanceToSun / DISTANCE_SCALE; // Convert back to AU
+        const sunDistanceAU = distanceToSun / DISTANCE_SCALE;
 
-        // Calculate tail visibility and intensity based on distance to sun
-        // Comets are most active when close to sun (< 5 AU typically)
-        const maxTailDistance = 8; // AU - increased for more visible tails
-        const tailIntensity = Math.max(0, Math.min(1, (maxTailDistance - sunDistance) / maxTailDistance));
-        
-        // Update tail opacity with smooth falloff
-        const tailOpacity = Math.pow(tailIntensity, 0.5) * userData.tailOpacity;
-        userData.tailMaterial.opacity = tailOpacity;
-        userData.particleMaterial.opacity = tailOpacity * 0.9;
-        userData.gasMaterial.opacity = tailOpacity * 0.7;
-
-        // Calculate direction away from sun for tail pointing
-        const sunDirection = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), comet.position).normalize();
-        
-        // Point tail away from sun
-        const tailDirection = comet.position.clone().sub(sunDirection.multiplyScalar(100));
-        userData.tail.lookAt(tailDirection);
-        userData.particles.lookAt(tailDirection);
-        userData.gasParticles.lookAt(tailDirection);
-
-        // Scale tail length based on solar distance and comet activity
-        const baseTailScale = 0.3 + tailIntensity * 1.7;
-        const velocityScale = Math.min(2, Math.abs(userData.speed) * 200 + 0.5); // Faster comets have longer tails
-        const finalTailScale = baseTailScale * velocityScale;
-        
-        userData.tail.scale.setScalar(finalTailScale);
-        userData.particles.scale.setScalar(finalTailScale);
-        userData.gasParticles.scale.setScalar(finalTailScale * 1.2); // Gas tail is longer
-
-        // Animate dust particles with realistic physics
-        const dustPositions = userData.particles.geometry.attributes.position.array;
-        const dustVelocities = userData.particles.geometry.userData.velocities;
-        const dustAges = userData.particles.geometry.userData.ages;
-        const maxAge = userData.particles.geometry.userData.maxAge;
-        const dustColors = userData.particles.geometry.attributes.color.array;
-        
-        for (let i = 0; i < dustPositions.length; i += 3) {
-            const particleIndex = i / 3;
-            
-            // Age the particle
-            dustAges[particleIndex] += timeSpeed;
-            
-            // Reset old particles near the nucleus
-            if (dustAges[particleIndex] > maxAge) {
-                dustPositions[i] = (Math.random() - 0.5) * 2;
-                dustPositions[i + 1] = (Math.random() - 0.5) * 2;
-                dustPositions[i + 2] = Math.random() * 5;
-                
-                dustVelocities[i] = (Math.random() - 0.5) * 0.2;
-                dustVelocities[i + 1] = (Math.random() - 0.5) * 0.2;
-                dustVelocities[i + 2] = -Math.random() * 0.5 - 0.1;
-                
-                dustAges[particleIndex] = 0;
-            } else {
-                // Apply solar wind pressure (radiation pressure)
-                const solarPressure = tailIntensity * 0.05;
-                dustVelocities[i + 2] -= solarPressure * timeSpeed;
-                
-                // Apply some random turbulence
-                dustVelocities[i] += (Math.random() - 0.5) * 0.02 * timeSpeed;
-                dustVelocities[i + 1] += (Math.random() - 0.5) * 0.02 * timeSpeed;
-                
-                // Move particles
-                dustPositions[i] += dustVelocities[i] * timeSpeed;
-                dustPositions[i + 1] += dustVelocities[i + 1] * timeSpeed;
-                dustPositions[i + 2] += dustVelocities[i + 2] * timeSpeed;
-                
-                // Fade particles as they age and get farther away
-                const age = dustAges[particleIndex] / maxAge;
-                const distance = Math.abs(dustPositions[i + 2]);
-                const fadeFactor = Math.max(0, 1 - age) * Math.max(0, 1 - distance / (userData.tailLength * 15));
-                
-                // Update particle color alpha based on fade
-                const baseColor = new THREE.Color(userData.color);
-                dustColors[i] = baseColor.r * fadeFactor;
-                dustColors[i + 1] = baseColor.g * fadeFactor;
-                dustColors[i + 2] = baseColor.b * fadeFactor;
-            }
-        }
-        
-        // Animate gas particles (faster, straighter)
-        const gasPositions = userData.gasParticles.geometry.attributes.position.array;
-        const gasVelocities = userData.gasParticles.geometry.userData.velocities;
-        const gasColors = userData.gasParticles.geometry.attributes.color.array;
-        
-        for (let i = 0; i < gasPositions.length; i += 3) {
-            // Apply stronger solar wind to gas
-            const solarPressure = tailIntensity * 0.1;
-            gasVelocities[i + 2] -= solarPressure * timeSpeed;
-            
-            // Move gas particles
-            gasPositions[i] += gasVelocities[i] * timeSpeed;
-            gasPositions[i + 1] += gasVelocities[i + 1] * timeSpeed;
-            gasPositions[i + 2] += gasVelocities[i + 2] * timeSpeed;
-            
-            // Reset gas particles that drift too far
-            if (gasPositions[i + 2] < -userData.tailLength * 20) {
-                gasPositions[i] = (Math.random() - 0.5) * 1;
-                gasPositions[i + 1] = (Math.random() - 0.5) * 1;
-                gasPositions[i + 2] = Math.random() * 3;
-                
-                gasVelocities[i] = (Math.random() - 0.5) * 0.1;
-                gasVelocities[i + 1] = (Math.random() - 0.5) * 0.1;
-                gasVelocities[i + 2] = -Math.random() * 1.0 - 0.5;
-            }
-        }
-        
-        // Mark geometries for update
-        userData.particles.geometry.attributes.position.needsUpdate = true;
-        userData.particles.geometry.attributes.color.needsUpdate = true;
-        userData.gasParticles.geometry.attributes.position.needsUpdate = true;
-
-        // Rotate comet nucleus realistically using configured parameters
-        if (userData.nucleus && userData.nucleus.rotation !== undefined) {
-            userData.nucleus.rotation.y += userData.nucleus.rotation * timeSpeed;
-            userData.nucleus.rotation.x += userData.nucleus.tumble * timeSpeed; // Tumbling motion
-        } else {
-            // Fallback to default rotation if not configured
-            userData.nucleus.rotation.y += 0.02 * timeSpeed;
+        // NUCLEUS - Small, dark, slowly rotating
+        if (userData.nucleus) {
+            userData.nucleus.rotation.y += 0.01 * timeSpeed;
             userData.nucleus.rotation.x += 0.005 * timeSpeed;
+        }
+
+        // Calculate solar activity (stronger when closer to sun)
+        const maxActivityDistance = 10; // AU - effects visible up to this distance
+        const activity = Math.max(0, Math.min(1, (maxActivityDistance - sunDistanceAU) / maxActivityDistance));
+        
+        // Simple direction away from sun (for tails)
+        const sunDirection = new THREE.Vector3(0, 0, 0);
+        const awayFromSun = new THREE.Vector3().subVectors(comet.position, sunDirection).normalize();
+
+        // 1. COMA - Bright spherical cloud around nucleus (appears at ~3-5 AU)
+        if (userData.coma && activity > 0.3) {
+            const comaSize = 2 + activity * 8; // Large, dramatic size
+            userData.coma.scale.setScalar(comaSize);
+            
+            // Bright, pulsing glow
+            const pulse = Math.sin(Date.now() * 0.001) * 0.2 + 1;
+            userData.comaMaterial.opacity = activity * 0.6 * pulse;
+            userData.comaGlowMaterial.opacity = activity * 0.3 * pulse;
+            
+            // Blue-white color
+            userData.comaMaterial.color.setHex(0xCCEEFF);
+            userData.comaGlowMaterial.color.setHex(0x88CCFF);
+        } else if (userData.coma) {
+            userData.comaMaterial.opacity = 0;
+            userData.comaGlowMaterial.opacity = 0;
+        }
+
+        // Only show tails when comet is active
+        if (activity > 0.1) {
+            // 3. PLASMA TAIL (ION TAIL) - Straight, blue, points directly away from sun
+            if (userData.plasmaTail) {
+                const plasmaLength = activity * 20; // Very long
+                userData.plasmaTail.scale.set(0.3, plasmaLength, 0.3); // Scale Y for length
+                
+                // Position the tail at the nucleus and orient it away from sun
+                userData.plasmaTail.position.copy(comet.position);
+                
+                // Create rotation to point away from sun
+                const tailDirection = awayFromSun.clone();
+                
+                // The cylinder geometry points along Y axis, so we need to align it with the tail direction
+                const quaternion = new THREE.Quaternion();
+                quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tailDirection);
+                userData.plasmaTail.setRotationFromQuaternion(quaternion);
+                
+                // Move the tail so it starts from the nucleus and extends outward
+                userData.plasmaTail.position.add(tailDirection.clone().multiplyScalar(plasmaLength * 0.5));
+                
+                // Bright blue with flickering
+                const flicker = Math.sin(Date.now() * 0.005) * 0.3 + 1;
+                userData.plasmaMaterial.opacity = activity * 0.6 * flicker;
+                userData.plasmaMaterial.color.setHex(0x4499FF); // Bright blue
+            }
+
+            // Animate particles for plasma tail
+            if (userData.plasmaParticles) {
+                // Update particle positions to follow the tail direction
+                const positions = userData.plasmaParticles.geometry.attributes.position.array;
+                const particleCount = positions.length / 3;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const distance = Math.random() * userData.tailLength * 20;
+                    const spread = distance * 0.02; // Very narrow
+                    
+                    // Create particle position relative to comet, pointing away from sun
+                    const particleDirection = awayFromSun.clone().multiplyScalar(distance);
+                    const sideways = new THREE.Vector3(
+                        (Math.random() - 0.5) * spread,
+                        (Math.random() - 0.5) * spread,
+                        0
+                    );
+                    
+                    const finalPosition = particleDirection.add(sideways);
+                    
+                    positions[i * 3] = finalPosition.x;
+                    positions[i * 3 + 1] = finalPosition.y;
+                    positions[i * 3 + 2] = finalPosition.z;
+                }
+                
+                userData.plasmaParticles.geometry.attributes.position.needsUpdate = true;
+                userData.plasmaParticleMaterial.opacity = activity * 0.6;
+            }
+            
+            if (userData.dustParticles) {
+                // Update dust particle positions similarly
+                const positions = userData.dustParticles.geometry.attributes.position.array;
+                const particleCount = positions.length / 3;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const distance = Math.random() * userData.tailLength * 15;
+                    const spread = distance * 0.08; // Broader spread
+                    
+                    // Create particle position relative to comet, pointing away from sun
+                    const particleDirection = awayFromSun.clone().multiplyScalar(distance);
+                    const sideways = new THREE.Vector3(
+                        (Math.random() - 0.5) * spread,
+                        (Math.random() - 0.5) * spread,
+                        0
+                    );
+                    
+                    const finalPosition = particleDirection.add(sideways);
+                    
+                    positions[i * 3] = finalPosition.x;
+                    positions[i * 3 + 1] = finalPosition.y;
+                    positions[i * 3 + 2] = finalPosition.z;
+                }
+                
+                userData.dustParticles.geometry.attributes.position.needsUpdate = true;
+                userData.dustParticleMaterial.opacity = activity * 0.5;
+            }
+        } else {
+            // Hide tails when comet is far from sun
+            if (userData.plasmaTail) userData.plasmaMaterial.opacity = 0;
+            if (userData.plasmaParticles) userData.plasmaParticleMaterial.opacity = 0;
+            if (userData.dustParticles) userData.dustParticleMaterial.opacity = 0;
         }
     }
 }

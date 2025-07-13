@@ -12,30 +12,6 @@ function loadTextures() {
     }
 }
 
-// Create starfield background
-function createStarfield() {
-    const starGeometry = new THREE.BufferGeometry();
-    const starCount = 25000;
-    const positions = new Float32Array(starCount * 3);
-
-    for (let i = 0; i < starCount; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * 300000;
-        positions[i * 3 + 1] = (Math.random() - 0.5) * 300000;
-        positions[i * 3 + 2] = (Math.random() - 0.5) * 300000;
-    }
-
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-    const starMaterial = new THREE.PointsMaterial({
-        color: 0xFFFFFF,
-        size: 1,
-        sizeAttenuation: false
-    });
-
-    const stars = new THREE.Points(starGeometry, starMaterial);
-    scene.add(stars);
-}
-
 // Create the sun
 function createSun() {
     const geometry = new THREE.SphereGeometry(sunData.size * 8, 32, 32); // Custom scaling for sun visibility
@@ -480,135 +456,83 @@ function createOortCloud() {
     scene.add(oortCloud); // Add directly to scene, not solar system group
 }
 
-// Create comets with tails
+// Create comets with stunning visual components (ESA reference style)
 function createComets() {
     comets = {};
     
     for (let cometName in cometData) {
         const data = cometData[cometName];
         
-        // Create comet nucleus
-        const nucleusGeometry = new THREE.SphereGeometry(data.size * SIZE_SCALE, 8, 8);
+        // 1. NUCLEUS - Small dark rocky-icy core
+        const nucleusGeometry = new THREE.SphereGeometry(data.size * SIZE_SCALE, 12, 12);
         const nucleusMaterial = new THREE.MeshLambertMaterial({
-            color: data.color,
-            emissive: data.color,
-            emissiveIntensity: 0.2
+            color: 0x444444,
+            emissive: 0x222222,
+            emissiveIntensity: 0.3
         });
-        
         const nucleus = new THREE.Mesh(nucleusGeometry, nucleusMaterial);
         
-        // Create comet tail using a cone geometry
-        const tailGeometry = new THREE.ConeGeometry(0.5, data.tailLength * 15, 12, 1, true);
-        const tailMaterial = new THREE.MeshBasicMaterial({
-            color: data.color,
+        // 2. COMA - Bright spherical cloud (main visual feature)
+        const comaGeometry = new THREE.SphereGeometry(data.size * SIZE_SCALE * 10, 24, 24);
+        const comaMaterial = new THREE.MeshBasicMaterial({
+            color: 0xCCEEFF,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide
+        });
+        const coma = new THREE.Mesh(comaGeometry, comaMaterial);
+        
+        // Coma outer glow
+        const comaGlowGeometry = new THREE.SphereGeometry(data.size * SIZE_SCALE * 12, 24, 24);
+        const comaGlowMaterial = new THREE.MeshBasicMaterial({
+            color: 0x88CCFF,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide
+        });
+        const comaGlow = new THREE.Mesh(comaGlowGeometry, comaGlowMaterial);
+        
+        // 3. PLASMA TAIL - Straight, narrow, blue (using cylinder instead of cone)
+        const plasmaTailGeometry = new THREE.CylinderGeometry(0.1, 0.05, data.tailLength * 20, 8, 1, true);
+        const plasmaMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4499FF,
             transparent: true,
             opacity: 0,
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending
         });
+        const plasmaTail = new THREE.Mesh(plasmaTailGeometry, plasmaMaterial);
         
-        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
-        tail.rotation.x = Math.PI / 2; // Point tail away from sun
+        // Rotate the plasma tail so it initially points in the negative Z direction
+        plasmaTail.rotation.x = Math.PI / 2;
         
-        // Create enhanced tail particle system for more realistic effect
-        const particleCount = 500; // Increased particle count
-        const particleGeometry = new THREE.BufferGeometry();
-        const particlePositions = new Float32Array(particleCount * 3);
-        const particleColors = new Float32Array(particleCount * 3);
-        const particleSizes = new Float32Array(particleCount);
-        const particleVelocities = new Float32Array(particleCount * 3);
-        const particleAges = new Float32Array(particleCount);
+        // Plasma tail particles
+        const plasmaParticleCount = 300;
+        const plasmaGeometry = new THREE.BufferGeometry();
+        const plasmaPositions = new Float32Array(plasmaParticleCount * 3);
+        const plasmaColors = new Float32Array(plasmaParticleCount * 3);
         
-        for (let i = 0; i < particleCount; i++) {
-            // Create tail particles extending away from sun
-            const distance = Math.random() * data.tailLength * 15;
-            const spread = (Math.random() - 0.5) * distance * 0.1; // Wider spread for longer distances
-            
-            particlePositions[i * 3] = spread * (Math.random() - 0.5);
-            particlePositions[i * 3 + 1] = spread * (Math.random() - 0.5);
-            particlePositions[i * 3 + 2] = -distance;
-            
-            // Random initial velocities for particle movement
-            particleVelocities[i * 3] = (Math.random() - 0.5) * 0.2;
-            particleVelocities[i * 3 + 1] = (Math.random() - 0.5) * 0.2;
-            particleVelocities[i * 3 + 2] = -Math.random() * 0.5 - 0.1; // Always moving away from comet
-            
-            // Random age for particle lifecycle
-            particleAges[i] = Math.random();
-            
-            // Color based on comet color with slight variation
-            const color = new THREE.Color(data.color);
-            const brightness = 0.5 + Math.random() * 0.5;
-            particleColors[i * 3] = color.r * brightness;
-            particleColors[i * 3 + 1] = color.g * brightness;
-            particleColors[i * 3 + 2] = color.b * brightness;
-            
-            particleSizes[i] = Math.random() * 4 + 1;
-        }
-        
-        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-        particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-        particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
-        
-        // Store custom attributes for animation
-        particleGeometry.userData = {
-            velocities: particleVelocities,
-            ages: particleAges,
-            maxAge: 100 + Math.random() * 100,
-            tailLength: data.tailLength
-        };
-        
-        const particleMaterial = new THREE.PointsMaterial({
-            vertexColors: true,
-            transparent: true,
-            opacity: 0,
-            size: 3,
-            sizeAttenuation: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        
-        const particles = new THREE.Points(particleGeometry, particleMaterial);
-        
-        // Create gas tail (separate from dust tail)
-        const gasParticleCount = 300;
-        const gasGeometry = new THREE.BufferGeometry();
-        const gasPositions = new Float32Array(gasParticleCount * 3);
-        const gasColors = new Float32Array(gasParticleCount * 3);
-        const gasSizes = new Float32Array(gasParticleCount);
-        const gasVelocities = new Float32Array(gasParticleCount * 3);
-        
-        for (let i = 0; i < gasParticleCount; i++) {
+        for (let i = 0; i < plasmaParticleCount; i++) {
             const distance = Math.random() * data.tailLength * 20;
-            const spread = distance * 0.05; // Narrower gas tail
+            const spread = distance * 0.02; // Very narrow
             
-            gasPositions[i * 3] = (Math.random() - 0.5) * spread;
-            gasPositions[i * 3 + 1] = (Math.random() - 0.5) * spread;
-            gasPositions[i * 3 + 2] = -distance;
+            plasmaPositions[i * 3] = (Math.random() - 0.5) * spread;
+            plasmaPositions[i * 3 + 1] = (Math.random() - 0.5) * spread;
+            plasmaPositions[i * 3 + 2] = -distance;
             
-            // Gas moves faster than dust
-            gasVelocities[i * 3] = (Math.random() - 0.5) * 0.1;
-            gasVelocities[i * 3 + 1] = (Math.random() - 0.5) * 0.1;
-            gasVelocities[i * 3 + 2] = -Math.random() * 1.0 - 0.5;
-            
-            // Blue-white color for gas tail
-            const brightness = 0.3 + Math.random() * 0.7;
-            gasColors[i * 3] = brightness * 0.7;     // R
-            gasColors[i * 3 + 1] = brightness * 0.8; // G  
-            gasColors[i * 3 + 2] = brightness;       // B (more blue)
-            
-            gasSizes[i] = Math.random() * 2 + 0.5;
+            // Blue plasma color
+            const brightness = 0.5 + Math.random() * 0.5;
+            plasmaColors[i * 3] = brightness * 0.3;     // R
+            plasmaColors[i * 3 + 1] = brightness * 0.6; // G
+            plasmaColors[i * 3 + 2] = brightness * 1.0; // B (blue)
         }
         
-        gasGeometry.setAttribute('position', new THREE.BufferAttribute(gasPositions, 3));
-        gasGeometry.setAttribute('color', new THREE.BufferAttribute(gasColors, 3));
-        gasGeometry.setAttribute('size', new THREE.BufferAttribute(gasSizes, 1));
-        gasGeometry.userData = {
-            velocities: gasVelocities,
-            tailLength: data.tailLength
-        };
+        plasmaGeometry.setAttribute('position', new THREE.BufferAttribute(plasmaPositions, 3));
+        plasmaGeometry.setAttribute('color', new THREE.BufferAttribute(plasmaColors, 3));
         
-        const gasMaterial = new THREE.PointsMaterial({
+        const plasmaParticleMaterial = new THREE.PointsMaterial({
             vertexColors: true,
             transparent: true,
             opacity: 0,
@@ -617,32 +541,72 @@ function createComets() {
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
+        const plasmaParticles = new THREE.Points(plasmaGeometry, plasmaParticleMaterial);
         
-        const gasParticles = new THREE.Points(gasGeometry, gasMaterial);
+        // Dust tail particles
+        const dustParticleCount = 100;
+        const dustGeometry = new THREE.BufferGeometry();
+        const dustPositions = new Float32Array(dustParticleCount * 3);
+        const dustColors = new Float32Array(dustParticleCount * 3);
         
-        // Group comet components
+        for (let i = 0; i < dustParticleCount; i++) {
+            const distance = Math.random() * data.tailLength * 15;
+            const spread = distance * 0.08; // Broader spread
+            
+            dustPositions[i * 3] = (Math.random() - 0.5) * spread;
+            dustPositions[i * 3 + 1] = (Math.random() - 0.5) * spread;
+            dustPositions[i * 3 + 2] = -distance;
+            
+            // Yellowish dust color
+            const brightness = 0.4 + Math.random() * 0.6;
+            dustColors[i * 3] = brightness * 1.0;     // R
+            dustColors[i * 3 + 1] = brightness * 0.8; // G
+            dustColors[i * 3 + 2] = brightness * 0.4; // B (yellow)
+        }
+        
+        dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+        dustGeometry.setAttribute('color', new THREE.BufferAttribute(dustColors, 3));
+        
+        const dustParticleMaterial = new THREE.PointsMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0,
+            size: 3,
+            sizeAttenuation: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const dustParticles = new THREE.Points(dustGeometry, dustParticleMaterial);
+        
+        // Group all comet components
         const cometGroup = new THREE.Group();
         cometGroup.add(nucleus);
-        cometGroup.add(tail);
-        cometGroup.add(particles);
-        cometGroup.add(gasParticles);
+        cometGroup.add(coma);
+        cometGroup.add(comaGlow);
+        cometGroup.add(plasmaTail);
+        cometGroup.add(plasmaParticles);
+        cometGroup.add(dustParticles);
         
-        // Set initial position based on perihelion
+        // Set initial position
         const initialDistance = data.perihelion * DISTANCE_SCALE;
         cometGroup.position.set(initialDistance, 0, 0);
         
-        // Store references and data
+        // Store all references and data
         cometGroup.userData = {
             ...data,
             name: cometName,
             angle: 0,
             nucleus: nucleus,
-            tail: tail,
-            particles: particles,
-            gasParticles: gasParticles,
-            tailMaterial: tailMaterial,
-            particleMaterial: particleMaterial,
-            gasMaterial: gasMaterial,
+            coma: coma,
+            comaGlow: comaGlow,
+            plasmaTail: plasmaTail,
+            plasmaParticles: plasmaParticles,
+            dustParticles: dustParticles,
+            comaMaterial: comaMaterial,
+            comaGlowMaterial: comaGlowMaterial,
+            plasmaMaterial: plasmaMaterial,
+            plasmaParticleMaterial: plasmaParticleMaterial,
+            dustParticleMaterial: dustParticleMaterial,
             semiMajorAxis: (data.perihelion + data.aphelion) / 2,
             originalDistance: (data.perihelion + data.aphelion) / 2
         };
@@ -654,9 +618,6 @@ function createComets() {
 
 // Create the solar system
 function createSolarSystem() {
-    // Create starfield background
-    //createStarfield();
-
     // Create sun
     createSun();
 
@@ -690,6 +651,9 @@ function createSolarSystem() {
 
     // Create Oort Cloud
     createOortCloud();
+
+    // Create comets
+    createComets();
 
     // Create comets
     createComets();
