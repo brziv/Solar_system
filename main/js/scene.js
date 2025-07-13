@@ -616,6 +616,80 @@ function createComets() {
     }
 }
 
+// Create Heliospheric Boundary Glow - ENA emissions at heliopause
+function createHeliosphericGlow() {
+    const glowGeometry = new THREE.BufferGeometry();
+    const particleCount = heliosphericGlowData.particleCount;
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+        // Generate random point on spherical shell at heliopause
+        const phi = Math.random() * Math.PI * 2; // Azimuthal angle
+        const cosTheta = Math.random() * 2 - 1;   // Polar angle (uniform distribution)
+        const theta = Math.acos(cosTheta);
+        
+        // Random radius around heliopause distance
+        const baseRadius = heliosphericGlowData.heliopauseDistance * DISTANCE_SCALE;
+        const variation = baseRadius * 0.3; // 30% variation
+        const radius = baseRadius + (Math.random() - 0.5) * variation;
+        
+        // Convert spherical to cartesian coordinates
+        const x = radius * Math.sin(theta) * Math.cos(phi);
+        const y = radius * Math.sin(theta) * Math.sin(phi);
+        const z = radius * Math.cos(theta);
+        
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+        
+        // Assign colors based on ENA emission type
+        const rand = Math.random();
+        let color;
+        if (rand < 0.3) {
+            // ENA ribbon flux - most prominent feature
+            color = new THREE.Color(heliosphericGlowData.colors.ribbon);
+        } else if (rand < 0.6) {
+            // Energetic Neutral Atoms
+            color = new THREE.Color(heliosphericGlowData.colors.ena);
+        } else if (rand < 0.8) {
+            // UV emissions
+            color = new THREE.Color(heliosphericGlowData.colors.uv);
+        } else {
+            // Soft X-ray emissions
+            color = new THREE.Color(heliosphericGlowData.colors.softXray);
+        }
+        
+        // Add brightness variation for dynamic appearance
+        const brightness = 0.4 + Math.random() * 0.6;
+        colors[i * 3] = color.r * brightness;
+        colors[i * 3 + 1] = color.g * brightness;
+        colors[i * 3 + 2] = color.b * brightness;
+        
+        // Vary particle sizes
+        sizes[i] = heliosphericGlowData.size * (0.5 + Math.random() * 1.5);
+    }
+
+    glowGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    glowGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    glowGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const glowMaterial = new THREE.PointsMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: heliosphericGlowData.opacity,
+        size: heliosphericGlowData.size,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+    heliosphericGlow = new THREE.Points(glowGeometry, glowMaterial);
+    heliosphericGlow.visible = true; // Always visible by default
+    scene.add(heliosphericGlow); // Add directly to scene, not solar system group
+}
+
 // Create the solar system
 function createSolarSystem() {
     // Create sun
@@ -655,6 +729,6 @@ function createSolarSystem() {
     // Create comets
     createComets();
 
-    // Create comets
-    createComets();
+    // Create heliospheric boundary glow
+    createHeliosphericGlow();
 }

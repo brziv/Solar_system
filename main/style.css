@@ -181,3 +181,16 @@ button.active-focus:hover {
     font-size: 18px;
     z-index: 200;
 }
+
+/* Special styling for view option buttons */
+#heliosphereToggle.active {
+    background: linear-gradient(45deg, #4400FF, #FF4400);
+    color: white;
+    box-shadow: 0 0 10px rgba(68, 0, 255, 0.5);
+}
+
+#magnetotailToggle.active {
+    background: linear-gradient(45deg, #00FF44, #4488FF);
+    color: white;
+    box-shadow: 0 0 10px rgba(68, 136, 255, 0.5);
+}

@@ -233,6 +233,36 @@ function updateComets() {
     }
 }
 
+// Update heliospheric boundary glow animation
+function updateHeliosphericGlow() {
+    if (!heliosphericGlow) return;
+
+    const time = Date.now() * heliosphericGlowData.animationSpeed;
+    
+    // Animate ENA ribbon pulsing
+    const pulse = Math.sin(time * heliosphericGlowData.pulseFrequency) * 0.3 + 0.7;
+    heliosphericGlow.material.opacity = heliosphericGlowData.opacity * pulse;
+    
+    // Rotate the glow slightly to simulate solar wind interaction
+    heliosphericGlow.rotation.y += 0.0001 * timeSpeed;
+    heliosphericGlow.rotation.z += 0.00005 * timeSpeed;
+    
+    // Animate particle colors for charge exchange effects
+    const colors = heliosphericGlow.geometry.attributes.color.array;
+    const particleCount = colors.length / 3;
+    
+    for (let i = 0; i < particleCount; i += 100) { // Update every 100th particle for performance
+        const offset = time + i * 0.01;
+        const brightness = Math.sin(offset) * 0.3 + 0.7;
+        
+        colors[i * 3] *= brightness;
+        colors[i * 3 + 1] *= brightness;
+        colors[i * 3 + 2] *= brightness;
+    }
+    
+    heliosphericGlow.geometry.attributes.color.needsUpdate = true;
+}
+
 // Handle camera movement
 function handleCameraMovement() {
     // Apply speed boost if shift is held
@@ -343,6 +373,7 @@ function animate() {
     handleCameraMovement();
     updatePlanets();
     updateCameraFocus();
+    updateHeliosphericGlow();
     
     // Animate preview sphere
     animatePreviewSphere();

@@ -6,6 +6,7 @@ let scene, camera, renderer;
 let sun, planets = {}, moons = {}, dwarfPlanets = {}, comets = {};
 let orbits = [], dwarfOrbits = [], cometOrbits = [];
 let asteroidBelt, kuiperBelt, oortCloud;
+let heliosphericGlow;
 let timeSpeed = 1;
 let movementSpeed = 10;
 let currentFocus = null;

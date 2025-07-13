@@ -166,6 +166,22 @@ const oortCloudData = {
     }
 };
 
+// Heliospheric Boundary Glow configuration - ENA emissions at heliopause
+const heliosphericGlowData = {
+    heliopauseDistance: 120,    // Distance to heliopause in AU (~90-120 AU)
+    ribbonExtent: 200,          // Extent of the heliosphere (~200 AU across)
+    particleCount: 50000,       // Number of ENA particles to show
+    opacity: 0.6,               // Base opacity for ENA glow
+    size: 2.0,                  // Size of glow particles
+    colors: {
+        ena: 0x4400FF,          // Energetic Neutral Atoms - purple/violet
+        softXray: 0x00CCFF,     // Soft X-rays - cyan
+        uv: 0x8800FF,           // UV emissions - purple
+        ribbon: 0xFF4400        // ENA ribbon flux - orange-red
+    },
+    animationSpeed: 0.001,      // Speed of charge exchange animation
+    pulseFrequency: 0.002       // Frequency of ENA pulse effects
+};
 
 // Texture paths configuration
 const texturePaths = {
