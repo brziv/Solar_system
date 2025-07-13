@@ -14,8 +14,7 @@ function loadTextures() {
 
 // Create the sun
 function createSun() {
-    const geometry = new THREE.SphereGeometry(sunData.size * 8, 32, 32); // Custom scaling for sun visibility
-    let material;
+    const geometry = new THREE.SphereGeometry(sunData.size * 8, 32, 32);
 
     if (loadedTextures.sun) {
         material = new THREE.MeshBasicMaterial({
@@ -508,8 +507,22 @@ function createComets() {
         // Rotate the plasma tail so it initially points in the negative Z direction
         plasmaTail.rotation.x = Math.PI / 2;
         
+        // 4. DUST TAIL - Broader, curved, yellowish-white (more prominent than ion tail)
+        const dustTailGeometry = new THREE.CylinderGeometry(0.8, 0.2, data.tailLength * 30, 12, 1, true);
+        const dustMaterial = new THREE.MeshBasicMaterial({
+            color: 0xFFDD88,
+            transparent: true,
+            opacity: 0,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const dustTail = new THREE.Mesh(dustTailGeometry, dustMaterial);
+        
+        // Rotate the dust tail so it initially points in the negative Z direction
+        dustTail.rotation.x = Math.PI / 2;
+        
         // Plasma tail particles
-        const plasmaParticleCount = 300;
+        const plasmaParticleCount = 200;
         const plasmaGeometry = new THREE.BufferGeometry();
         const plasmaPositions = new Float32Array(plasmaParticleCount * 3);
         const plasmaColors = new Float32Array(plasmaParticleCount * 3);
@@ -543,35 +556,40 @@ function createComets() {
         });
         const plasmaParticles = new THREE.Points(plasmaGeometry, plasmaParticleMaterial);
         
-        // Dust tail particles
-        const dustParticleCount = 100;
+        // Dust tail particles - broader, curved tail following radiation pressure
+        const dustParticleCount = 200; // More particles for better visibility
         const dustGeometry = new THREE.BufferGeometry();
         const dustPositions = new Float32Array(dustParticleCount * 3);
         const dustColors = new Float32Array(dustParticleCount * 3);
+        const dustSizes = new Float32Array(dustParticleCount);
         
         for (let i = 0; i < dustParticleCount; i++) {
-            const distance = Math.random() * data.tailLength * 15;
-            const spread = distance * 0.08; // Broader spread
+            const distance = Math.random() * data.tailLength * 25; // Longer tail
+            const spread = distance * 0.15; // Much broader spread
             
             dustPositions[i * 3] = (Math.random() - 0.5) * spread;
             dustPositions[i * 3 + 1] = (Math.random() - 0.5) * spread;
             dustPositions[i * 3 + 2] = -distance;
             
-            // Yellowish dust color
-            const brightness = 0.4 + Math.random() * 0.6;
+            // Yellowish-white dust color (more realistic)
+            const brightness = 0.5 + Math.random() * 0.5;
             dustColors[i * 3] = brightness * 1.0;     // R
-            dustColors[i * 3 + 1] = brightness * 0.8; // G
-            dustColors[i * 3 + 2] = brightness * 0.4; // B (yellow)
+            dustColors[i * 3 + 1] = brightness * 0.9; // G  
+            dustColors[i * 3 + 2] = brightness * 0.6; // B (warm yellow-white)
+            
+            // Varying particle sizes
+            dustSizes[i] = 2 + Math.random() * 4; // Larger particles
         }
         
         dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
         dustGeometry.setAttribute('color', new THREE.BufferAttribute(dustColors, 3));
+        dustGeometry.setAttribute('size', new THREE.BufferAttribute(dustSizes, 1));
         
         const dustParticleMaterial = new THREE.PointsMaterial({
             vertexColors: true,
             transparent: true,
             opacity: 0,
-            size: 3,
+            size: 4, // Larger base size
             sizeAttenuation: true,
             blending: THREE.AdditiveBlending,
             depthWrite: false

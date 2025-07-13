@@ -198,23 +198,30 @@ function updateComets() {
             }
             
             if (userData.dustParticles) {
-                // Update dust particle positions similarly
+                // Dust tail: broader, curved sweep following radiation pressure
                 const positions = userData.dustParticles.geometry.attributes.position.array;
                 const particleCount = positions.length / 3;
                 
                 for (let i = 0; i < particleCount; i++) {
-                    const distance = Math.random() * userData.tailLength * 15;
-                    const spread = distance * 0.08; // Broader spread
+                    const distance = Math.random() * userData.tailLength * 25; // Longer than ion tail
+                    const curveFactor = distance * 0.001; // Slight curve due to orbital motion
                     
-                    // Create particle position relative to comet, pointing away from sun
-                    const particleDirection = awayFromSun.clone().multiplyScalar(distance);
+                    // Base direction away from sun
+                    const baseDirection = awayFromSun.clone().multiplyScalar(distance);
+                    
+                    // Add orbital motion curve (perpendicular to radial direction)
+                    const orbitalTangent = new THREE.Vector3(-awayFromSun.z, 0, awayFromSun.x).normalize();
+                    const curveOffset = orbitalTangent.multiplyScalar(curveFactor * distance);
+                    
+                    // Much broader spread than ion tail
+                    const spread = distance * 0.15; // Almost double the spread
                     const sideways = new THREE.Vector3(
                         (Math.random() - 0.5) * spread,
                         (Math.random() - 0.5) * spread,
-                        0
+                        (Math.random() - 0.5) * spread * 0.5
                     );
                     
-                    const finalPosition = particleDirection.add(sideways);
+                    const finalPosition = baseDirection.add(curveOffset).add(sideways);
                     
                     positions[i * 3] = finalPosition.x;
                     positions[i * 3 + 1] = finalPosition.y;
@@ -222,7 +229,7 @@ function updateComets() {
                 }
                 
                 userData.dustParticles.geometry.attributes.position.needsUpdate = true;
-                userData.dustParticleMaterial.opacity = activity * 0.5;
+                userData.dustParticleMaterial.opacity = activity * 0.7; // More visible than before
             }
         } else {
             // Hide tails when comet is far from sun
