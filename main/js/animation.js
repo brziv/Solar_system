@@ -361,7 +361,20 @@ function updateCameraFocus() {
                     direction = camera.position.clone().sub(target.position).normalize();
                 }
                 const cameraPos = target.position.clone().add(direction.multiplyScalar(focusTargetDistance));
-                camera.position.lerp(cameraPos, 0.025);
+                
+                // Calculate distance-based lerp factor to reflect true scale
+                const currentDistance = camera.position.length();
+                let lerpFactor;
+                
+                if (currentDistance > 30000) {
+                    // Kuiper Belt scale - slow transition
+                    lerpFactor = 0.005;
+                } else {
+                    // Inner solar system - normal speed
+                    lerpFactor = 0.02;
+                }
+                
+                camera.position.lerp(cameraPos, lerpFactor);
             }
             camera.lookAt(target.position);
             updatePlanetInfoDisplay(currentFocus, target);

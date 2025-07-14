@@ -183,6 +183,31 @@ function resetCamera() {
     syncZoomSlider();
 }
 
+function viewOortCloud() {
+    currentFocus = null;
+    // Position camera outside the Oort Cloud (100,000 AU)
+    camera.position.set(20000000, 20000000, 20000000);
+    camera.lookAt(0, 0, 0);
+    focusTargetDistance = null;
+    document.getElementById('currentFocus').textContent = 'Focus: Oort Cloud View (100,000 AU scale)';
+
+    // Hide planet info and preview
+    const infoElement = document.getElementById('planet-info');
+    if (infoElement) {
+        infoElement.style.display = 'none';
+    }
+    
+    // Remove preview sphere from scene
+    if (previewSphere && previewScene) {
+        previewScene.remove(previewSphere);
+        previewSphere = null;
+    }
+    
+    // Clear button states
+    updateFocusButtonStates(null);
+    syncZoomSlider();
+}
+
 // Update focus button states for visual feedback
 function updateFocusButtonStates(activePlanet) {
     // Remove active class from all focus buttons
