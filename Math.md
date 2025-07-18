@@ -8,7 +8,6 @@
 5. [Heliospheric Boundary Mathematics](#heliospheric-boundary-mathematics)
 6. [Animation and Interpolation](#animation-and-interpolation)
 7. [Practical Code Examples](#practical-code-examples)
-8. [Study Progression Guide](#study-progression-guide)
 
 ---
 
@@ -428,52 +427,6 @@ haleBopp: {
 
 ---
 
-## Study Progression Guide
-
-### Phase 1: Fundamentals (1-2 weeks)
-1. **Trigonometry Review**
-   - Unit circle and parametric equations
-   - Applications in orbital motion
-   - Practice: Create simple circular orbits
-
-2. **Vector Mathematics**
-   - 3D vector operations
-   - Cross products for perpendicular vectors
-   - Practice: Implement comet tail directions
-
-### Phase 2: Orbital Mechanics (2-3 weeks)
-1. **Kepler's Laws**
-   - Elliptical orbit equation
-   - Distance-dependent speed
-   - Practice: Implement elliptical orbits
-
-2. **3D Inclinations**
-   - Orbital plane mathematics
-   - Spherical coordinate conversions
-   - Practice: Tilted orbital systems
-
-### Phase 3: Advanced Physics (3-4 weeks)
-1. **Comet Physics**
-   - Solar wind interactions
-   - Dual-tail mathematics
-   - Practice: Implement realistic comet behavior
-
-2. **Particle Systems**
-   - Large-scale distributions
-   - Spherical shell mathematics
-   - Practice: Create Oort cloud visualization
-
-### Phase 4: Specialized Topics (2-3 weeks)
-1. **Heliospheric Physics**
-   - ENA emission modeling
-   - Charge exchange processes
-   - Practice: Implement boundary effects
-
-2. **Quaternion Mathematics**
-   - 3D rotation algebra
-   - Smooth interpolation
-   - Practice: Advanced orientation control
-
 ## Essential Formulas Summary
 
 ### **Elliptical Orbit**
@@ -785,54 +738,6 @@ const apparentSize = realSize / distance;
 ```
 
 ---
-
-## Study Progression Guide
-
-### Phase 1: Fundamentals (1-2 weeks)
-1. **Trigonometry Review**
-   - Unit circle
-   - Sin, cos, tan functions
-   - Radians vs degrees
-   - Practice: Plot points on unit circle
-
-2. **Basic Algebra**
-   - Linear equations
-   - Quadratic equations
-   - Exponents and roots
-
-### Phase 2: 3D Mathematics (2-3 weeks)
-1. **Vector Mathematics**
-   - Vector addition/subtraction
-   - Dot and cross products
-   - Vector magnitude and normalization
-   - Practice: 3D vector problems
-
-2. **Coordinate Systems**
-   - Cartesian coordinates
-   - Spherical coordinates
-   - Coordinate transformations
-
-### Phase 3: Applied Mathematics (2-3 weeks)
-1. **Parametric Equations**
-   - Circle and ellipse equations
-   - 3D curves and surfaces
-   - Practice: Create parametric animations
-
-2. **Interpolation**
-   - Linear interpolation
-   - Cubic interpolation
-   - Easing functions
-
-### Phase 4: Advanced Topics (3-4 weeks)
-1. **Orbital Mechanics**
-   - Kepler's laws
-   - Elliptical orbits
-   - Gravitational mathematics
-
-2. **Matrix Mathematics**
-   - Matrix multiplication
-   - Transformation matrices
-   - Rotation matrices
 
 ## Essential Formulas Summary
 
