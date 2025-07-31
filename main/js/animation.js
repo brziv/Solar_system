@@ -270,65 +270,14 @@ function updateHeliosphericGlow() {
     heliosphericGlow.geometry.attributes.color.needsUpdate = true;
 }
 
-// Handle camera movement
-function handleCameraMovement() {
-    // Apply speed boost if shift is held
-    const baseSpeed = movementSpeed;
-    const speed = keys.shift ? baseSpeed * 2 : baseSpeed;
-
-    const direction = new THREE.Vector3();
-
-    if (currentFocus) {
-        // When focusing, move relative to the focused object
-        let target;
-        if (currentFocus === 'sun') {
-            target = sun;
-        } else if (planets[currentFocus]) {
-            target = planets[currentFocus];
-        } else if (dwarfPlanets[currentFocus]) {
-            target = dwarfPlanets[currentFocus];
-        } else if (comets[currentFocus]) {
-            target = comets[currentFocus];
-        }
-
-        if (target) {
-            // Calculate movement direction based on camera orientation
-            camera.getWorldDirection(direction);
-            const right = new THREE.Vector3().crossVectors(direction, camera.up).normalize();
-            const up = camera.up.clone();
-
-            // Store the current offset from target
-            const currentOffset = camera.position.clone().sub(target.position);
-
-            // Apply movement to the offset
-            if (keys.w) currentOffset.add(direction.multiplyScalar(speed));
-            if (keys.s) currentOffset.add(direction.multiplyScalar(-speed));
-            if (keys.a) currentOffset.add(right.multiplyScalar(-speed));
-            if (keys.d) currentOffset.add(right.multiplyScalar(speed));
-            if (keys.space) currentOffset.add(up.multiplyScalar(speed));
-            if (keys.ctrl) currentOffset.add(up.multiplyScalar(-speed));
-
-            // Update camera position to maintain the new offset
-            camera.position.copy(target.position).add(currentOffset);
-            camera.lookAt(target.position);
-        }
-    } else {
-        // Free camera movement (existing code)
-        camera.getWorldDirection(direction);
-        const right = new THREE.Vector3().crossVectors(direction, camera.up).normalize();
-        const up = camera.up.clone();
-
-        if (keys.w) camera.position.add(direction.multiplyScalar(speed));
-        if (keys.s) camera.position.add(direction.multiplyScalar(-speed));
-        if (keys.a) camera.position.add(right.multiplyScalar(-speed));
-        if (keys.d) camera.position.add(right.multiplyScalar(speed));
-        if (keys.space) camera.position.add(up.multiplyScalar(speed));
-        if (keys.ctrl) camera.position.add(up.multiplyScalar(-speed));
-    }
-}
-
 // Update camera focus
 function updateCameraFocus() {
+    // Không update camera focus khi đang zoom
+    if (isZooming) return;
+    
+    // HOÀN TOÀN TẮT AUTO-UPDATE KHI CÓ MANUAL MOVEMENT
+    if (manualCameraMovement) return;
+    
     if (currentFocus) {
         let target;
         if (currentFocus === 'sun') {
@@ -340,49 +289,112 @@ function updateCameraFocus() {
         } else if (comets[currentFocus]) {
             target = comets[currentFocus];
         }
+        
         if (target) {
             const isMoving = keys.w || keys.s || keys.a || keys.d || keys.space || keys.ctrl;
+            
+            // Tính toán khoảng cách mặc định dựa trên loại thiên thể
             let defaultDistance;
             if (target === sun) {
-                defaultDistance = 500;
+                defaultDistance = 200;
             } else if (currentFocus === 'jupiter' || currentFocus === 'saturn') {
-                defaultDistance = 150; // Larger planets need more distance
+                defaultDistance = 80;
             } else if (currentFocus === 'uranus' || currentFocus === 'neptune') {
-                defaultDistance = 120; // Outer planets
-            } else {
-                defaultDistance = 45; // Inner planets and dwarf planets
+                defaultDistance = 60;
+            } else if (planets[currentFocus]) {
+                defaultDistance = 40;
+            } else if (dwarfPlanets[currentFocus]) {
+                defaultDistance = 30;
+            } else if (comets[currentFocus]) {
+                defaultDistance = 20;
             }
-            if (focusTargetDistance === null) focusTargetDistance = defaultDistance;
-            if (!isMoving) {
-                let direction;
-                if (camera.position.equals(target.position)) {
-                    direction = new THREE.Vector3(1, 0.5, 1).normalize();
-                } else {
-                    direction = camera.position.clone().sub(target.position).normalize();
-                }
-                const cameraPos = target.position.clone().add(direction.multiplyScalar(focusTargetDistance));
-                
-                // Calculate distance-based lerp factor to reflect true scale
-                const currentDistance = camera.position.length();
-                let lerpFactor;
-                
-                if (currentDistance > 30000) {
-                    // Kuiper Belt scale - slow transition
-                    lerpFactor = 0.005;
-                } else {
-                    // Inner solar system - normal speed
-                    lerpFactor = 0.02;
-                }
-                
-                camera.position.lerp(cameraPos, lerpFactor);
+            
+            if (focusTargetDistance === null) {
+                focusTargetDistance = defaultDistance;
             }
-            camera.lookAt(target.position);
+            
+            // Chỉ update camera khi:
+            // 1. Không đang di chuyển bằng keyboard
+            // 2. Không đang kéo chuột
+            // 3. Không có manual movement (đã check ở đầu function)
+            if (!isMoving && !mouseDown) {
+                const currentDistance = camera.position.distanceTo(target.position);
+                
+                // Chỉ update nếu camera đang ở xa hơn khoảng cách mục tiêu
+                // Điều này ngăn camera bị kéo ra xa khi người dùng đã zoom gần
+                if (currentDistance > focusTargetDistance * 1.2) {
+                    // Tính toán hướng camera tối ưu
+                    let direction;
+                    if (camera.position.equals(target.position)) {
+                        direction = new THREE.Vector3(1, 0.3, 1).normalize();
+                    } else {
+                        direction = camera.position.clone().sub(target.position).normalize();
+                    }
+                    
+                    // Tính toán vị trí camera mục tiêu
+                    const targetCameraPos = target.position.clone().add(direction.multiplyScalar(focusTargetDistance));
+                    
+                    // Tính toán lerp factor dựa trên khoảng cách hiện tại
+                    let lerpFactor;
+                    
+                    if (currentDistance > 10000) {
+                        lerpFactor = 0.003;
+                    } else if (currentDistance > 1000) {
+                        lerpFactor = 0.008;
+                    } else if (currentDistance > 100) {
+                        lerpFactor = 0.02;
+                    } else {
+                        lerpFactor = 0.05;
+                    }
+                    
+                    // Áp dụng smooth transition
+                    camera.position.lerp(targetCameraPos, lerpFactor);
+                    
+                    // Smooth rotation để camera luôn nhìn vào target
+                    const lookAtTarget = target.position.clone();
+                    camera.lookAt(lookAtTarget);
+                }
+            }
+            
             updatePlanetInfoDisplay(currentFocus, target);
             syncZoomSlider();
         }
     } else {
         focusTargetDistance = null;
         syncZoomSlider();
+    }
+}
+
+// Function để kiểm tra camera health
+function checkCameraHealth() {
+    if (!currentFocus) return;
+    
+    let target;
+    if (currentFocus === 'sun') {
+        target = sun;
+    } else if (planets[currentFocus]) {
+        target = planets[currentFocus];
+    } else if (dwarfPlanets[currentFocus]) {
+        target = dwarfPlanets[currentFocus];
+    } else if (comets[currentFocus]) {
+        target = comets[currentFocus];
+    }
+    
+    if (target) {
+        const currentDistance = camera.position.distanceTo(target.position);
+        
+        // Kiểm tra nếu camera quá xa hoặc quá gần
+        if (currentDistance > 100000 || currentDistance < 1) {
+            // Auto fix camera
+            const zoomLevels = getOptimalZoomLevel(target, currentFocus);
+            focusTargetDistance = zoomLevels.optimalDistance;
+            
+            const direction = camera.position.clone().sub(target.position).normalize();
+            const targetPosition = target.position.clone().add(direction.multiplyScalar(zoomLevels.optimalDistance));
+            camera.position.copy(targetPosition);
+            
+            syncZoomSlider();
+        }
     }
 }
 
@@ -394,6 +406,9 @@ function animate() {
     updatePlanets();
     updateCameraFocus();
     updateHeliosphericGlow();
+    
+    // Kiểm tra camera health
+    checkCameraHealth();
     
     // Animate preview sphere
     animatePreviewSphere();
