@@ -183,6 +183,23 @@ const heliosphericGlowData = {
     pulseFrequency: 0.002       // Frequency of ENA pulse effects
 };
 
+// Solar storm configuration - Simple particle effects from the Sun
+const solarStormData = {
+    particleCount: 5000,        // Number of storm particles
+    maxDistance: 5000,           // Maximum distance from sun (in pixels)
+    baseSpeed: 2,               // Base particle speed
+    speedVariation: 3,          // Speed variation range
+    opacity: 0.6,               // Particle opacity
+    size: 1.5,                  // Particle size
+    colors: {
+        plasma: 0xFF4400,       // Orange-red plasma
+        proton: 0xFFAA00,       // Yellow protons
+        electron: 0x4488FF      // Blue electrons
+    },
+    stormIntensity: 1.0,        // Storm intensity multiplier (0.5 - 2.0)
+    stormFrequency: 0.0003      // How often storm pulses occur
+};
+
 // Texture paths configuration
 const texturePaths = {
     sun: 'textures/8k_sun.jpg',

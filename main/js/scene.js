@@ -708,7 +708,75 @@ function createHeliosphericGlow() {
     scene.add(heliosphericGlow); // Add directly to scene, not solar system group
 }
 
-// Create the solar system
+
+// Create solar storm particle effects
+function createSolarStorm() {
+    const particleCount = solarStormData.particleCount;
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const velocities = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+
+    for (let i = 0; i < particleCount; i++) {
+        // Start particles near the sun surface
+        const startRadius = sunData.size * 8 + 5; // Just outside sun surface
+        const phi = Math.random() * Math.PI * 2;
+        const cosTheta = Math.random() * 2 - 1;
+        const theta = Math.acos(cosTheta);
+
+        // Initial position near sun
+        positions[i * 3] = startRadius * Math.sin(theta) * Math.cos(phi);
+        positions[i * 3 + 1] = startRadius * Math.sin(theta) * Math.sin(phi);
+        positions[i * 3 + 2] = startRadius * Math.cos(theta);
+
+        // Velocity direction (radial outward from sun)
+        const speed = solarStormData.baseSpeed + Math.random() * solarStormData.speedVariation;
+        velocities[i * 3] = (positions[i * 3] / startRadius) * speed;
+        velocities[i * 3 + 1] = (positions[i * 3 + 1] / startRadius) * speed;
+        velocities[i * 3 + 2] = (positions[i * 3 + 2] / startRadius) * speed;
+
+        // Particle colors - mix of plasma types
+        const rand = Math.random();
+        let color;
+        if (rand < 0.4) {
+            color = new THREE.Color(solarStormData.colors.plasma); // Orange-red plasma
+        } else if (rand < 0.7) {
+            color = new THREE.Color(solarStormData.colors.proton); // Yellow protons
+        } else {
+            color = new THREE.Color(solarStormData.colors.electron); // Blue electrons
+        }
+
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+
+        // Particle size with some variation
+        sizes[i] = solarStormData.size * (0.5 + Math.random() * 0.5);
+    }
+
+    // Create geometry and material
+    const stormGeometry = new THREE.BufferGeometry();
+    stormGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    stormGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    stormGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    // Store velocities as custom attribute for animation
+    stormGeometry.userData = { velocities: velocities };
+
+    const stormMaterial = new THREE.PointsMaterial({
+        size: solarStormData.size,
+        vertexColors: true,
+        transparent: true,
+        opacity: solarStormData.opacity,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+    solarStorm = new THREE.Points(stormGeometry, stormMaterial);
+    scene.add(solarStorm);
+}
+
 function createSolarSystem() {
     // Create sun
     createSun();
@@ -749,4 +817,7 @@ function createSolarSystem() {
 
     // Create heliospheric boundary glow
     createHeliosphericGlow();
+
+    // Create solar storm effects
+    createSolarStorm();
 }

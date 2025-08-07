@@ -270,6 +270,58 @@ function updateHeliosphericGlow() {
     heliosphericGlow.geometry.attributes.color.needsUpdate = true;
 }
 
+// Update solar storm particles
+function updateSolarStorm() {
+    if (!solarStorm) return;
+
+    const positions = solarStorm.geometry.attributes.position.array;
+    const velocities = solarStorm.geometry.userData.velocities;
+    const particleCount = positions.length / 3;
+    
+    // Storm intensity varies over time
+    const time = Date.now() * solarStormData.stormFrequency;
+    const stormPulse = Math.sin(time) * 0.5 + 1.5; // 1.0 to 2.0 intensity
+    const currentIntensity = solarStormData.stormIntensity * stormPulse;
+
+    for (let i = 0; i < particleCount; i++) {
+        // Update particle positions
+        positions[i * 3] += velocities[i * 3] * timeSpeed * currentIntensity;
+        positions[i * 3 + 1] += velocities[i * 3 + 1] * timeSpeed * currentIntensity;
+        positions[i * 3 + 2] += velocities[i * 3 + 2] * timeSpeed * currentIntensity;
+
+        // Calculate distance from sun
+        const distance = Math.sqrt(
+            positions[i * 3] * positions[i * 3] +
+            positions[i * 3 + 1] * positions[i * 3 + 1] +
+            positions[i * 3 + 2] * positions[i * 3 + 2]
+        );
+
+        // Reset particle if it goes too far
+        if (distance > solarStormData.maxDistance) {
+            // Reset to sun surface
+            const startRadius = sunData.size * 8 + 5;
+            const phi = Math.random() * Math.PI * 2;
+            const cosTheta = Math.random() * 2 - 1;
+            const theta = Math.acos(cosTheta);
+
+            positions[i * 3] = startRadius * Math.sin(theta) * Math.cos(phi);
+            positions[i * 3 + 1] = startRadius * Math.sin(theta) * Math.sin(phi);
+            positions[i * 3 + 2] = startRadius * Math.cos(theta);
+
+            // Reset velocity
+            const speed = solarStormData.baseSpeed + Math.random() * solarStormData.speedVariation;
+            velocities[i * 3] = (positions[i * 3] / startRadius) * speed;
+            velocities[i * 3 + 1] = (positions[i * 3 + 1] / startRadius) * speed;
+            velocities[i * 3 + 2] = (positions[i * 3 + 2] / startRadius) * speed;
+        }
+    }
+
+    solarStorm.geometry.attributes.position.needsUpdate = true;
+    
+    // Vary storm opacity based on intensity
+    solarStorm.material.opacity = solarStormData.opacity * (0.5 + currentIntensity * 0.5);
+}
+
 // Handle camera movement
 function handleCameraMovement() {
     // Apply speed boost if shift is held
@@ -394,6 +446,7 @@ function animate() {
     updatePlanets();
     updateCameraFocus();
     updateHeliosphericGlow();
+    updateSolarStorm();
     
     // Animate preview sphere
     animatePreviewSphere();
