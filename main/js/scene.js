@@ -1008,6 +1008,4 @@ function triggerSolarFlare() {
     const flare = createSolarFlare();
     solarFlares.push(flare);
     scene.add(flare);
-    
-    console.log(`Solar flare triggered! Class: ${flare.userData.intensity > 0.8 ? 'X' : flare.userData.intensity > 0.5 ? 'M' : 'C'}`);
 }
