@@ -447,9 +447,103 @@ function animate() {
     updateCameraFocus();
     updateHeliosphericGlow();
     updateSolarStorm();
+    updateSolarFlares();
     
     // Animate preview sphere
     animatePreviewSphere();
 
     renderer.render(scene, camera);
+}
+
+// Update solar flares animation
+function updateSolarFlares() {
+    if (!solarFlares || solarFlares.length === 0) return;
+    
+    const currentTime = Date.now();
+    
+    // Update existing flares and remove expired ones
+    for (let i = solarFlares.length - 1; i >= 0; i--) {
+        const flare = solarFlares[i];
+        const flareData = flare.userData;
+        const age = currentTime - flareData.createdAt;
+        const lifeProgress = age / flareData.lifetime;
+        
+        if (lifeProgress >= 1.0) {
+            // Remove expired flare
+            scene.remove(flare);
+            solarFlares.splice(i, 1);
+            continue;
+        }
+        
+        // Animate flare particles
+        if (flareData.particles) {
+            const positions = flareData.particles.geometry.attributes.position.array;
+            const velocities = flareData.particles.geometry.userData.velocities;
+            const colors = flareData.particles.geometry.attributes.color.array;
+            const particleCount = positions.length / 3;
+            
+            for (let j = 0; j < particleCount; j++) {
+                // Update particle positions with gravity and magnetic field effects
+                const x = positions[j * 3];
+                const y = positions[j * 3 + 1];
+                const z = positions[j * 3 + 2];
+                
+                // Calculate distance from sun center
+                const distanceFromSun = Math.sqrt(x * x + y * y + z * z);
+                const sunRadius = sunData.size * 8;
+                
+                // Apply magnetic field constraints (particles follow field lines)
+                const magneticForce = Math.exp(-distanceFromSun / (sunRadius * 3));
+                const gravityForce = (sunRadius * sunRadius) / (distanceFromSun * distanceFromSun) * 0.1;
+                
+                // Update velocities with physics
+                velocities[j * 3] *= (1.0 - gravityForce * timeSpeed);
+                velocities[j * 3 + 1] -= gravityForce * timeSpeed * 2; // Gravity pulls down
+                velocities[j * 3 + 2] *= (1.0 - gravityForce * timeSpeed);
+                
+                // Update positions
+                positions[j * 3] += velocities[j * 3] * timeSpeed;
+                positions[j * 3 + 1] += velocities[j * 3 + 1] * timeSpeed;
+                positions[j * 3 + 2] += velocities[j * 3 + 2] * timeSpeed;
+                
+                // Fade particles over time
+                const fadeProgress = Math.min(lifeProgress * 2, 1.0);
+                const fadeFactor = 1.0 - fadeProgress;
+                
+                colors[j * 3] *= (0.99 + fadeFactor * 0.01);
+                colors[j * 3 + 1] *= (0.99 + fadeFactor * 0.01);
+                colors[j * 3 + 2] *= (0.99 + fadeFactor * 0.01);
+            }
+            
+            flareData.particles.geometry.attributes.position.needsUpdate = true;
+            flareData.particles.geometry.attributes.color.needsUpdate = true;
+            
+            // Fade overall opacity
+            const fadeOpacity = 1.0 - Math.pow(lifeProgress, 2);
+            flareData.particles.material.opacity = 0.8 * fadeOpacity;
+        }
+        
+        // Animate magnetic field loops
+        flareData.magneticLoops.forEach((loop, loopIndex) => {
+            const pulseFactor = Math.sin(currentTime * 0.005 + loopIndex) * 0.3 + 0.7;
+            const fadeOpacity = 1.0 - Math.pow(lifeProgress, 1.5);
+            loop.material.opacity = 0.3 * flareData.intensity * pulseFactor * fadeOpacity;
+        });
+        
+        // Animate glow effect
+        if (flareData.glowEffect) {
+            const glowPulse = Math.sin(currentTime * 0.008) * 0.5 + 1.0;
+            const glowFade = 1.0 - Math.pow(lifeProgress, 1.2);
+            flareData.glowEffect.material.opacity = 0.2 * flareData.intensity * glowPulse * glowFade;
+            
+            // Scale glow slightly
+            const glowScale = 1.0 + Math.sin(currentTime * 0.003) * 0.1;
+            flareData.glowEffect.scale.setScalar(glowScale);
+        }
+    }
+    
+    // Randomly trigger new flares
+    if (Math.random() < solarFlareData.frequency && solarFlares.length < solarFlareData.maxFlares) {
+        triggerSolarFlare();
+    }
 }

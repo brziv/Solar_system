@@ -8,6 +8,7 @@ let orbits = [], dwarfOrbits = [], cometOrbits = [];
 let asteroidBelt, kuiperBelt, oortCloud;
 let heliosphericGlow;
 let solarStorm;
+let solarFlares = [];
 let timeSpeed = 1;
 let movementSpeed = 10;
 let currentFocus = null;

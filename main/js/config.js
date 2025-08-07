@@ -200,6 +200,31 @@ const solarStormData = {
     stormFrequency: 0.0003      // How often storm pulses occur
 };
 
+// Solar flare configuration - Dramatic bursts of energy from the Sun
+const solarFlareData = {
+    maxFlares: 8,               // Maximum number of concurrent flares
+    flareLifetime: 5000,        // Flare duration in milliseconds
+    particleCount: 3000,        // Particles per flare
+    maxHeight: 120,             // Maximum flare height (sun radii)
+    baseWidth: 15,              // Base width at sun surface
+    peakWidth: 45,              // Peak width at maximum height
+    colors: {
+        core: 0xFFFFFF,         // White hot core
+        plasma: 0xFF6600,       // Orange plasma
+        corona: 0xFF0000,       // Red corona
+        magnetic: 0xFF00FF      // Magenta magnetic field lines
+    },
+    intensity: {
+        low: 0.3,               // Low intensity flares
+        medium: 0.7,            // Medium intensity flares
+        high: 1.0               // High intensity X-class flares
+    },
+    frequency: 1,         // How often flares occur (very rare)
+    burstSpeed: 8,              // Speed of flare particles
+    magneticLoops: 6,           // Number of magnetic loops per flare
+    glowIntensity: 2.0          // Glow effect intensity
+};
+
 // Texture paths configuration
 const texturePaths = {
     sun: 'textures/8k_sun.jpg',

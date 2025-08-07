@@ -820,4 +820,194 @@ function createSolarSystem() {
 
     // Create solar storm effects
     createSolarStorm();
+    
+    // Initialize solar flare system
+    initializeSolarFlares();
+}
+
+// Create solar flare effects - Dramatic bursts of energy from the Sun
+function createSolarFlare() {
+    const flareGroup = new THREE.Group();
+    const flareData = {
+        createdAt: Date.now(),
+        lifetime: solarFlareData.flareLifetime,
+        intensity: Math.random() * 0.7 + 0.3, // 0.3 to 1.0
+        angle: Math.random() * Math.PI * 2,
+        height: (20 + Math.random() * 100) * (sunData.size * 8), // Flare height in pixels
+        particles: null,
+        magneticLoops: [],
+        glowEffect: null
+    };
+    
+    // Determine flare class based on intensity
+    let flareClass, baseColor, particleCount;
+    if (flareData.intensity < 0.5) {
+        flareClass = 'C'; // C-class flare
+        baseColor = solarFlareData.colors.corona;
+        particleCount = solarFlareData.particleCount * 0.6;
+    } else if (flareData.intensity < 0.8) {
+        flareClass = 'M'; // M-class flare  
+        baseColor = solarFlareData.colors.plasma;
+        particleCount = solarFlareData.particleCount * 0.8;
+    } else {
+        flareClass = 'X'; // X-class flare (most powerful)
+        baseColor = solarFlareData.colors.core;
+        particleCount = solarFlareData.particleCount;
+    }
+    
+    // Create main flare particle stream
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+    const velocities = new Float32Array(particleCount * 3);
+    
+    const sunRadius = sunData.size * 8;
+    const color = new THREE.Color(baseColor);
+    
+    for (let i = 0; i < particleCount; i++) {
+        // Start particles at sun surface in flare direction
+        const phi = flareData.angle + (Math.random() - 0.5) * 0.3; // Small spread
+        const theta = Math.PI * 0.5 + (Math.random() - 0.5) * 0.2; // Near equator mostly
+        
+        const startRadius = sunRadius + Math.random() * 10;
+        positions[i * 3] = startRadius * Math.sin(theta) * Math.cos(phi);
+        positions[i * 3 + 1] = startRadius * Math.cos(theta);
+        positions[i * 3 + 2] = startRadius * Math.sin(theta) * Math.sin(phi);
+        
+        // Create initial velocity - particles follow magnetic field lines
+        const height = Math.random() * flareData.height;
+        const arcProgress = height / flareData.height;
+        
+        // Parabolic trajectory for magnetic loop
+        const loopRadius = solarFlareData.baseWidth + arcProgress * (solarFlareData.peakWidth - solarFlareData.baseWidth);
+        const loopHeight = height * Math.sin(arcProgress * Math.PI);
+        
+        const speed = solarFlareData.burstSpeed * (0.5 + Math.random() * 1.5);
+        velocities[i * 3] = Math.cos(phi) * speed * (0.3 + arcProgress * 0.7);
+        velocities[i * 3 + 1] = speed * (1.0 + arcProgress * 2.0); // Upward burst
+        velocities[i * 3 + 2] = Math.sin(phi) * speed * (0.3 + arcProgress * 0.7);
+        
+        // Color variation - hotter core, cooler edges
+        const intensity = 0.7 + Math.random() * 0.3;
+        const coreProximity = 1.0 - Math.min(arcProgress, 0.8);
+        
+        if (coreProximity > 0.7) {
+            // White hot core
+            colors[i * 3] = 1.0;
+            colors[i * 3 + 1] = 1.0;
+            colors[i * 3 + 2] = 1.0;
+        } else if (coreProximity > 0.4) {
+            // Orange plasma
+            colors[i * 3] = 1.0;
+            colors[i * 3 + 1] = 0.4 + coreProximity * 0.6;
+            colors[i * 3 + 2] = 0.0;
+        } else {
+            // Red corona
+            colors[i * 3] = 1.0;
+            colors[i * 3 + 1] = 0.0;
+            colors[i * 3 + 2] = 0.0;
+        }
+        
+        // Apply intensity
+        colors[i * 3] *= intensity;
+        colors[i * 3 + 1] *= intensity;
+        colors[i * 3 + 2] *= intensity;
+        
+        sizes[i] = 2 + Math.random() * 4 + flareData.intensity * 3;
+    }
+    
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    geometry.userData = { velocities: velocities };
+    
+    const material = new THREE.PointsMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.8,
+        size: 3,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    
+    flareData.particles = new THREE.Points(geometry, material);
+    flareGroup.add(flareData.particles);
+    
+    // Create magnetic field loops
+    for (let loop = 0; loop < solarFlareData.magneticLoops; loop++) {
+        const loopPoints = [];
+        const loopRadius = solarFlareData.baseWidth + loop * 8;
+        const loopHeight = flareData.height * (0.6 + loop * 0.1);
+        
+        // Create arch-shaped magnetic field line
+        for (let j = 0; j <= 32; j++) {
+            const t = j / 32;
+            const archAngle = t * Math.PI;
+            
+            const x = (sunRadius + loopRadius * Math.sin(archAngle)) * Math.cos(flareData.angle);
+            const y = loopHeight * Math.sin(archAngle);
+            const z = (sunRadius + loopRadius * Math.sin(archAngle)) * Math.sin(flareData.angle);
+            
+            loopPoints.push(new THREE.Vector3(x, y, z));
+        }
+        
+        const curve = new THREE.CatmullRomCurve3(loopPoints);
+        const tubeGeometry = new THREE.TubeGeometry(curve, 32, 0.8, 6, false);
+        
+        const loopMaterial = new THREE.MeshBasicMaterial({
+            color: solarFlareData.colors.magnetic,
+            transparent: true,
+            opacity: 0.3 * flareData.intensity,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const magneticLoop = new THREE.Mesh(tubeGeometry, loopMaterial);
+        flareData.magneticLoops.push(magneticLoop);
+        flareGroup.add(magneticLoop);
+    }
+    
+    // Create intense glow effect around flare base
+    const glowGeometry = new THREE.SphereGeometry(sunRadius * 1.2, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+        color: baseColor,
+        transparent: true,
+        opacity: 0.2 * flareData.intensity,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide
+    });
+    
+    flareData.glowEffect = new THREE.Mesh(glowGeometry, glowMaterial);
+    flareGroup.add(flareData.glowEffect);
+    
+    // Position the entire flare group
+    flareGroup.userData = flareData;
+    flareGroup.name = `solarFlare_${Date.now()}`;
+    
+    return flareGroup;
+}
+
+// Initialize solar flare system
+function initializeSolarFlares() {
+    solarFlares = [];
+    
+    // Create initial flares randomly
+    const initialFlares = Math.floor(Math.random() * 3) + 1;
+    for (let i = 0; i < initialFlares; i++) {
+        setTimeout(() => {
+            triggerSolarFlare();
+        }, Math.random() * 2000);
+    }
+}
+
+// Trigger a new solar flare
+function triggerSolarFlare() {
+    if (solarFlares.length >= solarFlareData.maxFlares) return;
+    
+    const flare = createSolarFlare();
+    solarFlares.push(flare);
+    scene.add(flare);
+    
+    console.log(`Solar flare triggered! Class: ${flare.userData.intensity > 0.8 ? 'X' : flare.userData.intensity > 0.5 ? 'M' : 'C'}`);
 }
